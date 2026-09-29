@@ -97,7 +97,7 @@ const fmt=n=>Number(n||0).toLocaleString('it-IT',{maximumFractionDigits:3});
 const dateIt=d=>d?new Date(d+'T12:00:00').toLocaleDateString('it-IT'):'—';
 let session=null; let currentPage='dashboard'; let cache={categorie:[],articoli:[],ubicazioni:[],lotti:[]};
 
-const navItems=[['dashboard','Dashboard','▦'],['articoli','Articoli','▤'],['categorie','Categorie','◫'],['lotti','Lotti e scadenze','◷'],['movimenti','Movimenti','⇄'],['scadenze','Scadenze','!'],['dotazioni','Dotazioni ambulanze','✚'],['inventario','Inventario','▧'],['riordino','Riordino','☑'],['impostazioni','Impostazioni','⚙']];
+const navItems=[['dashboard','Dashboard','▦'],['articoli','Articoli','▤'],['categorie','Categorie','◫'],['lotti','Lotti','◷'],['movimenti','Movimenti','⇄'],['scadenze','Scadenze','!'],['dotazioni','Dotazioni ambulanze','✚'],['inventario','Inventario','▧'],['riordino','Riordino','☑'],['impostazioni','Impostazioni','⚙']];
 $('#nav').innerHTML=navItems.map(([id,l,ic])=>`<button class="nav-btn ${id==='dashboard'?'active':''}" data-page="${id}"><span>${ic}</span>${l}</button>`).join('');
 $('#nav').addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(b)showPage(b.dataset.page)});
 
@@ -251,8 +251,8 @@ async function renderLotti(){
  let selectedCategory=null;
  const activeCats=cache.categorie.filter(c=>c.attiva);
  const catButtons=activeCats.map((c,i)=>`<button type="button" class="category-filter cat-${i%12}" data-cat="${c.id}">${esc(c.nome)}</button>`).join('');
- p.innerHTML=pageHead('Lotti e scadenze','<button class="btn primary" id="newLot">+ Nuovo lotto</button>')+
- `<div class="hint" style="margin-bottom:10px">Seleziona una categoria per visualizzare i lotti e le relative scadenze.</div>
+ p.innerHTML=pageHead('Lotti','<button class="btn primary" id="newLot">+ Nuovo lotto</button>')+
+ `<div class="hint" style="margin-bottom:10px">Seleziona una categoria per visualizzare i lotti.</div>
  <div class="category-buttons">
    <button type="button" class="category-filter" data-cat="all">Tutti</button>
    ${catButtons}
@@ -389,7 +389,49 @@ function quickMovementModal(tipo){
 }
 
 
-async function renderScadenze(){await loadBase();const p=$('#page-scadenze');const lots=cache.lotti.filter(x=>x.data_scadenza).sort((a,b)=>a.data_scadenza.localeCompare(b.data_scadenza));p.innerHTML=pageHead('Scadenze')+table(['Articolo','Lotto','Scadenza','Stato'],lots.map(l=>`<tr><td>${esc(l.mag_articoli?.codice||'')} — ${esc(l.mag_articoli?.nome||'')}</td><td>${esc(l.numero_lotto||'—')}</td><td>${dateIt(l.data_scadenza)}</td><td>${expiryTag(l.data_scadenza)}</td></tr>`).join(''))}
+async function renderScadenze(){
+ await loadBase();
+ const p=$('#page-scadenze');
+ let selectedCategory=null;
+ const activeCats=cache.categorie.filter(c=>c.attiva);
+ const catButtons=activeCats.map((c,i)=>`<button type="button" class="category-filter cat-${i%12}" data-cat="${c.id}">${esc(c.nome)}</button>`).join('');
+ const lots=cache.lotti.filter(x=>x.data_scadenza).sort((a,b)=>a.data_scadenza.localeCompare(b.data_scadenza));
+
+ p.innerHTML=pageHead('Scadenze')+
+ `<div class="hint" style="margin-bottom:10px">Seleziona una categoria per visualizzare le scadenze.</div>
+ <div class="category-buttons">
+   <button type="button" class="category-filter" data-cat="all">Tutti</button>
+   ${catButtons}
+ </div>
+ <div id="scadenzeTable" class="article-table-hidden"></div>`;
+
+ const filtered=()=>{
+   if(!selectedCategory)return [];
+   if(selectedCategory==='all')return lots;
+   return lots.filter(l=>{
+     const art=cache.articoli.find(a=>a.id===l.articolo_id);
+     return art?.categoria_id===selectedCategory;
+   });
+ };
+
+ const draw=()=>{
+   const box=$('#scadenzeTable');
+   if(!selectedCategory){
+     box.classList.add('article-table-hidden');
+     box.innerHTML='';
+     return;
+   }
+   const data=filtered();
+   box.innerHTML=table(['Articolo','Lotto','Scadenza','Stato'],data.map(l=>`<tr><td>${esc(l.mag_articoli?.codice||'')} — ${esc(l.mag_articoli?.nome||'')}</td><td>${esc(l.numero_lotto||'—')}</td><td>${dateIt(l.data_scadenza)}</td><td>${expiryTag(l.data_scadenza)}</td></tr>`).join(''));
+   box.classList.remove('article-table-hidden');
+ };
+
+ p.querySelectorAll('.category-filter').forEach(btn=>btn.addEventListener('click',()=>{
+   selectedCategory=btn.dataset.cat;
+   p.querySelectorAll('.category-filter').forEach(x=>x.classList.toggle('active',x===btn));
+   draw();
+ }));
+}
 
 async function renderDotazioni(){await loadBase();const p=$('#page-dotazioni');const rows=await safe(sb.from('mag_reintegri').select('*').order('ubicazione'));p.innerHTML=pageHead('Dotazioni ambulanze','<button class="btn primary" id="newReq">+ Imposta dotazione minima</button>')+table(['Mezzo','Articolo','Minimo','Presente','Mancante',''],rows.filter(r=>r.ubicazione_codice.startsWith('MEZZO_')).map(r=>`<tr><td><strong>${esc(r.ubicazione)}</strong></td><td>${esc(r.codice)} — ${esc(r.articolo)}</td><td>${fmt(r.quantita_minima)} ${esc(r.unita_misura)}</td><td>${fmt(r.quantita_attuale)}</td><td class="${Number(r.quantita_mancante)>0?'danger-text':'ok-text'}">${fmt(r.quantita_mancante)}</td><td>${Number(r.quantita_mancante)>0?`<button class="btn small primary" data-reintegra-art="${r.articolo_id}" data-reintegra-mezzo="${r.ubicazione_codice}" data-q="${r.quantita_mancante}">Reintegra</button>`:''}</td></tr>`).join(''));$('#newReq').onclick=()=>reqModal();p.addEventListener('click',async e=>{const b=e.target.closest('[data-reintegra-art]');if(!b)return;await loadBase();const candidates=cache.lotti.filter(l=>l.articolo_id===b.dataset.reintegraArt);if(!candidates.length){toast('Prima crea un lotto per questo articolo.',true);return}movementModal({tipo:'TRASFERIMENTO',lotto_id:candidates[0].id,quantita:b.dataset.q,da:'MAG_CENTRALE',a:b.dataset.reintegraMezzo,causale:'Reintegro dotazione ambulanza'})},{once:true})}
 function reqModal(){const mezzi=cache.ubicazioni.filter(u=>u.tipo==='MEZZO');const m=modal(`<h3>Dotazione minima</h3><form id="reqForm" class="grid-2"><label>Ambulanza<select name="ubicazione_codice" required>${mezzi.map(u=>`<option value="${u.codice}">${esc(u.nome)}</option>`).join('')}</select></label><label>Articolo<select name="articolo_id" required>${cache.articoli.filter(a=>a.attivo).map(a=>`<option value="${a.id}">${esc(a.codice)} — ${esc(a.nome)}</option>`).join('')}</select></label><label>Quantità minima<input name="quantita_minima" type="number" min="0" step="0.001" required></label><div class="modal-foot" style="grid-column:1/-1"><button type="button" class="btn ghost" data-close>Annulla</button><button class="btn primary">Salva</button></div></form>`);m.querySelector('#reqForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);const o=Object.fromEntries(f.entries());o.quantita_minima=Number(o.quantita_minima);try{await safe(sb.from('mag_dotazioni_minime').upsert(o,{onConflict:'ubicazione_codice,articolo_id'}));m.remove();toast('Dotazione aggiornata');renderDotazioni()}catch(er){toast(er.message,true)}}}

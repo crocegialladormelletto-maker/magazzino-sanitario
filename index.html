@@ -39,6 +39,9 @@
 .dashboard-alert h3{margin:0 0 10px;font-size:17px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .dashboard-alert .alert-count{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 9px;border-radius:999px;font-weight:800;background:#fff}
 .dashboard-alert ul{margin:0;padding-left:20px}.dashboard-alert li{margin:6px 0}.dashboard-alert.ok{background:#ecfdf3;color:#166534}.dashboard-alert.warn{background:#fff7ed;color:#9a3412}.dashboard-alert.danger{background:#fef2f2;color:#991b1b}.dashboard-alert.info{background:#eff6ff;color:#1e3a8a}
+.dashboard-alert.clickable{cursor:pointer;transition:.18s ease}
+.dashboard-alert.clickable:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(13,55,97,.16)}
+.dashboard-alert.clickable:focus{outline:3px solid rgba(37,99,235,.25);outline-offset:2px}
 @media(max-width:760px){.dashboard-alerts{grid-template-columns:1fr}}
 .riordino-edit input,.riordino-edit select{margin:0;min-width:90px;padding:7px 8px}.riordino-edit input[type="checkbox"]{width:20px;height:20px;min-width:20px}.riordino-edit .note-input{min-width:180px}.riordino-edit .fornitore-input{min-width:150px}.riordino-head{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.print-title{display:none}
 .print-header{display:flex;align-items:center;gap:14px}
@@ -194,22 +197,22 @@ async function renderDashboard(){
  </div>
 
  <div class="dashboard-alerts">
-   <div class="dashboard-alert ${low?'warn':'ok'}">
+   <div class="dashboard-alert clickable ${low?'warn':'ok'}" data-dashboard-go="riordino" tabindex="0" role="button" aria-label="Apri lista riordino">
      <h3><span>⚠ Articoli sotto scorta</span><span class="alert-count">${low}</span></h3>
      ${alertList(lowRows,x=>`<strong>${esc(x.codice||'')}</strong> — ${esc(x.nome||'')} · giacenza ${fmt(x.giacenza_totale)} / minimo ${fmt(x.scorta_minima)} ${esc(x.unita_misura||'')}`,'Nessun articolo sotto scorta')}
    </div>
 
-   <div class="dashboard-alert ${due30.length?'warn':'ok'}">
+   <div class="dashboard-alert clickable ${due30.length?'warn':'ok'}" data-dashboard-go="scadenze" tabindex="0" role="button" aria-label="Apri scadenze entro 30 giorni">
      <h3><span>⏳ Scadenze entro 30 giorni</span><span class="alert-count">${due30.length}</span></h3>
      ${alertList(due30,lotLabel,'Nessun lotto in scadenza entro 30 giorni')}
    </div>
 
-   <div class="dashboard-alert ${expired?'danger':'ok'}">
+   <div class="dashboard-alert clickable ${expired?'danger':'ok'}" data-dashboard-go="scadenze" tabindex="0" role="button" aria-label="Apri lotti scaduti">
      <h3><span>⛔ Lotti scaduti</span><span class="alert-count">${expired}</span></h3>
      ${alertList(expiredLots,lotLabel,'Nessun lotto scaduto')}
    </div>
 
-   <div class="dashboard-alert ${missing?'info':'ok'}">
+   <div class="dashboard-alert clickable ${missing?'info':'ok'}" data-dashboard-go="dotazioni" tabindex="0" role="button" aria-label="Apri dotazioni ambulanze">
      <h3><span>🚑 Dotazioni ambulanze da reintegrare</span><span class="alert-count">${missing}</span></h3>
      ${alertList(missingRows,x=>`<strong>${esc(x.ubicazione||'Mezzo')}</strong> — ${esc(x.codice||'')} ${esc(x.articolo||'')} · mancano <strong>${fmt(x.quantita_mancante)}</strong> ${esc(x.unita_misura||'')}`,'Nessuna dotazione da reintegrare')}
    </div>
@@ -222,6 +225,11 @@ async function renderDashboard(){
    </div>
  </div>`;
 
+ $('#page-dashboard').querySelectorAll('[data-dashboard-go]').forEach(card=>{
+   const open=()=>showPage(card.dataset.dashboardGo);
+   card.addEventListener('click',open);
+   card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});
+ });
  const toggle=$('#toggleRecentMoves'), box=$('#recentMovesPanel');
  if(toggle&&box)toggle.onclick=()=>{
    const hidden=box.classList.toggle('hidden');

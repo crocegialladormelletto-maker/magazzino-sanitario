@@ -240,6 +240,18 @@ async function renderDashboard(){
 async function renderArticoli(){
  await loadBase();
  const p=$('#page-articoli');
+ const invRows=await safe(sb.from('mag_inventario').select('articolo_id,lotto_id,ubicazione_codice,quantita'));
+ const warehouseArticleIds=new Set(invRows.filter(x=>x.ubicazione_codice==='MAG_CENTRALE'&&Number(x.quantita||0)>0).map(x=>x.articolo_id));
+ const articleLots={};
+ cache.lotti.forEach(l=>{(articleLots[l.articolo_id]||(articleLots[l.articolo_id]=[])).push(l)});
+ const ambulanceOnlyIds=new Set(cache.articoli.filter(a=>{
+   const inv=invRows.filter(x=>x.articolo_id===a.id&&Number(x.quantita||0)>0);
+   const lots=articleLots[a.id]||[];
+   return inv.length>0 && !warehouseArticleIds.has(a.id) &&
+          inv.every(x=>String(x.ubicazione_codice||'').startsWith('MEZZO_')) &&
+          lots.length>0 && lots.every(l=>String(l.numero_lotto||'')==='PRESENZA-INIZIALE');
+ }).map(a=>a.id));
+ const warehouseArticles=cache.articoli.filter(a=>!ambulanceOnlyIds.has(a.id));
  let selectedCategory=null;
  const activeCats=cache.categorie.filter(c=>c.attiva);
  const catButtons=activeCats.map((c,i)=>`<button type="button" class="category-filter cat-${i%12}" data-cat="${c.id}">${esc(c.nome)}</button>`).join('');
@@ -258,7 +270,7 @@ async function renderArticoli(){
 
  const filtered=()=>{
    const q=($('#artSearch').value||'').trim().toLowerCase();
-   return cache.articoli.filter(a=>{
+   return warehouseArticles.filter(a=>{
      const hay=`${a.codice||''} ${a.nome||''} ${a.fornitore||''}`.toLowerCase();
      const catOk=selectedCategory==='all' ? true : selectedCategory ? a.categoria_id===selectedCategory : false;
      return catOk && (!q||hay.includes(q));
@@ -322,6 +334,18 @@ function catModal(c={}){const m=modal(`<h3>${c.id?'Modifica':'Nuova'} categoria<
 async function renderLotti(){
  await loadBase();
  const p=$('#page-lotti');
+ const invRows=await safe(sb.from('mag_inventario').select('articolo_id,lotto_id,ubicazione_codice,quantita'));
+ const warehouseArticleIds=new Set(invRows.filter(x=>x.ubicazione_codice==='MAG_CENTRALE'&&Number(x.quantita||0)>0).map(x=>x.articolo_id));
+ const articleLots={};
+ cache.lotti.forEach(l=>{(articleLots[l.articolo_id]||(articleLots[l.articolo_id]=[])).push(l)});
+ const ambulanceOnlyIds=new Set(cache.articoli.filter(a=>{
+   const inv=invRows.filter(x=>x.articolo_id===a.id&&Number(x.quantita||0)>0);
+   const lots=articleLots[a.id]||[];
+   return inv.length>0 && !warehouseArticleIds.has(a.id) &&
+          inv.every(x=>String(x.ubicazione_codice||'').startsWith('MEZZO_')) &&
+          lots.length>0 && lots.every(l=>String(l.numero_lotto||'')==='PRESENZA-INIZIALE');
+ }).map(a=>a.id));
+ const warehouseLots=cache.lotti.filter(l=>!ambulanceOnlyIds.has(l.articolo_id));
  let selectedCategory=null;
  const activeCats=cache.categorie.filter(c=>c.attiva);
  const catButtons=activeCats.map((c,i)=>`<button type="button" class="category-filter cat-${i%12}" data-cat="${c.id}">${esc(c.nome)}</button>`).join('');
@@ -335,8 +359,8 @@ async function renderLotti(){
 
  const filtered=()=>{
    if(!selectedCategory)return [];
-   if(selectedCategory==='all')return cache.lotti;
-   return cache.lotti.filter(l=>{
+   if(selectedCategory==='all')return warehouseLots;
+   return warehouseLots.filter(l=>{
      const art=cache.articoli.find(a=>a.id===l.articolo_id);
      return art?.categoria_id===selectedCategory;
    });

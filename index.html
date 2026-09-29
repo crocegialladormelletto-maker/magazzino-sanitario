@@ -561,12 +561,16 @@ async function renderRiordino(){
    </tr>`;
  }).join('');
 
- const manualRows=Object.entries(saved).filter(([k])=>k.startsWith('manual:')).map(([key,s])=>`<tr data-rio-key="${esc(key)}">
+ let manualEntries=Object.entries(saved).filter(([k])=>k.startsWith('manual:'));
+ if(!manualEntries.length){
+   manualEntries=[['manual:initial',{codice:'',nome:'',um:'pz',qta:'',fornitore:'',note:'',ordinato:false}]];
+ }
+ const manualRows=manualEntries.map(([key,s])=>`<tr data-rio-key="${esc(key)}">
    <td><input class="manual-code" value="${esc(s.codice||'')}" placeholder="Codice"></td>
    <td><input class="manual-name" value="${esc(s.nome||'')}" placeholder="Articolo"></td>
    <td><input class="manual-um" value="${esc(s.um||'pz')}" placeholder="U.M."></td>
    <td>—</td><td>—</td>
-   <td><input class="qty-input" type="number" min="0" step="0.001" value="${esc(s.qta||0)}"></td>
+   <td><input class="qty-input" type="number" min="0" step="0.001" value="${esc(s.qta||'')}" placeholder="Quantità"></td>
    <td><input class="fornitore-input" value="${esc(s.fornitore||'')}" placeholder="Fornitore"></td>
    <td><input class="note-input" value="${esc(s.note||'')}" placeholder="Note"></td>
    <td style="text-align:center"><input class="ordered-input" type="checkbox" ${s.ordinato?'checked':''}><br><button class="btn small danger delete-manual" type="button">Elimina</button></td>

@@ -286,7 +286,7 @@ async function renderArticoli(){
      return;
    }
    const data=filtered();
-   const rows=data.map(a=>`<tr><td>${esc(a.codice)}</td><td><strong>${esc(a.nome)}</strong></td><td>${esc(a.mag_categorie?.nome||'—')}</td><td>${esc(a.unita_misura)}</td><td>${fmt(a.scorta_minima)}</td><td>${esc(a.fornitore||'')}</td><td>${a.attivo?'<span class="tag green">Attivo</span>':'<span class="tag">Disattivo</span>'}</td><td><div class="actions"><button class="btn small ghost" data-edit="${a.id}">Modifica</button><button class="btn small danger" data-del-art="${a.id}">Cancella</button></div></td></tr>`).join('');
+   const rows=data.map(a=>`<tr><td>${esc(a.codice)}</td><td><strong>${esc(a.nome)}</strong></td><td>${esc(a.mag_categorie?.nome||'—')}</td><td>${esc(a.unita_misura)}</td><td>${fmt(a.scorta_minima)}</td><td>${esc(a.fornitore||'')}</td><td>${a.attivo?'<span class="tag green">Attivo</span>':'<span class="tag">Disattivo</span>'}</td><td><div class="actions"><button class="btn small ghost" data-edit="${a.id}">Modifica</button><button class="btn small danger" data-del-art="${a.id}">Elimina definitivamente</button></div></td></tr>`).join('');
    box.innerHTML=table(['Codice','Articolo','Categoria','U.M.','Scorta min.','Fornitore','Stato','Azioni'],rows);
    box.classList.remove('article-table-hidden');
    $('#artCount').textContent=`${data.length} articolo/i visualizzati`;
@@ -314,15 +314,33 @@ async function renderArticoli(){
    if(!db)return;
    const a=cache.articoli.find(x=>x.id===db.dataset.delArt);
    if(!a)return;
-   if(!confirm(`Vuoi cancellare definitivamente l'articolo "${a.nome}"?\n\nSe l'articolo ha già lotti o movimenti registrati, la cancellazione verrà bloccata per conservare lo storico.`))return;
    try{
+     const lotti=await safe(sb.from('mag_lotti').select('id').eq('articolo_id',a.id));
+     const lottoIds=lotti.map(x=>x.id);
+     let movCount=0, giacCount=0;
+     if(lottoIds.length){
+       const mov=await safe(sb.from('mag_movimenti').select('id').in('lotto_id',lottoIds));
+       const giac=await safe(sb.from('mag_giacenze').select('lotto_id').in('lotto_id',lottoIds));
+       movCount=mov.length;
+       giacCount=giac.length;
+     }
+     const dot=await safe(sb.from('mag_dotazioni_minime').select('articolo_id').eq('articolo_id',a.id));
+     const riepilogo=`Articolo: ${a.nome}\n\nCollegamenti trovati:\n• Lotti: ${lottoIds.length}\n• Movimenti: ${movCount}\n• Giacenze: ${giacCount}\n• Dotazioni minime: ${dot.length}\n\nLa cancellazione eliminerà anche tutti questi dati collegati.`;
+     if(!confirm(riepilogo+'\n\nVuoi continuare?'))return;
+     if(!confirm('SECONDA CONFERMA\n\nEliminare definitivamente "'+a.nome+'"?\nQuesta operazione non può essere annullata.'))return;
+
+     if(lottoIds.length){
+       await safe(sb.from('mag_movimenti').delete().in('lotto_id',lottoIds));
+       await safe(sb.from('mag_giacenze').delete().in('lotto_id',lottoIds));
+       await safe(sb.from('mag_lotti').delete().eq('articolo_id',a.id));
+     }
+     await safe(sb.from('mag_dotazioni_minime').delete().eq('articolo_id',a.id));
      await safe(sb.from('mag_articoli').delete().eq('id',a.id));
-     toast('Articolo cancellato');
+
+     toast('Articolo eliminato definitivamente');
      await renderArticoli();
    }catch(er){
-     const m=String(er.message||'');
-     if(/foreign key|mag_lotti|violates/i.test(m))toast('Articolo non cancellato: esistono già lotti o movimenti collegati. Puoi impostarlo come Disattivo per conservarne lo storico.',true);
-     else toast(m||'Impossibile cancellare l’articolo',true);
+     toast(er.message||'Impossibile eliminare definitivamente l’articolo',true);
    }
  };
 }

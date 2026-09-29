@@ -583,7 +583,6 @@ async function renderRiordino(){
  `<div class="print-title"><h2 style="margin:0;color:#0d3761">Lista riordino – Croce Gialla Emergenza ODV</h2><div>Data: ${new Date().toLocaleDateString('it-IT')}</div></div>
  <div class="hint" style="margin-bottom:12px">Compila quantità, fornitore, note e stato. Le righe suggerite derivano automaticamente dalle scorte sotto il minimo.</div>
  <div class="category-buttons" id="rioCategoryButtons">
-   <button type="button" class="category-filter active" data-rio-filter="all">Tutti</button>
    ${cache.categorie.filter(c=>c.attiva).map((cat,i)=>`<button type="button" class="category-filter cat-${i%12}" data-rio-filter="${cat.id}">${esc(cat.nome)}</button>`).join('')}
  </div>
  <div class="table-wrap">
@@ -620,7 +619,7 @@ async function renderRiordino(){
      const key=tr.dataset.rioKey||'';
      if(key.startsWith('manual:')){tr.style.display='';return;}
      const cat=tr.dataset.rioCat||'';
-     tr.style.display=(filter==='all'||cat===filter)?'':'none';
+     tr.style.display=(cat===filter)?'':'none';
    });
  }));
 

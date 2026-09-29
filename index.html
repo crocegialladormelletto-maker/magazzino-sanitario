@@ -119,11 +119,11 @@ const $=s=>document.querySelector(s); const $$=s=>[...document.querySelectorAll(
 const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const fmt=n=>Number(n||0).toLocaleString('it-IT',{maximumFractionDigits:3});
 const dateIt=d=>d?new Date(d+'T12:00:00').toLocaleDateString('it-IT'):'—';
-let session=null; let currentPage='dashboard'; let cache={categorie:[],articoli:[],ubicazioni:[],lotti:[]};
+let session=null; let currentPage='dashboard'; let dashboardTargetFilter=null; let cache={categorie:[],articoli:[],ubicazioni:[],lotti:[]};
 
 const navItems=[['dashboard','Dashboard','▦'],['articoli','Articoli','▤'],['categorie','Categorie','◫'],['lotti','Lotti','◷'],['movimenti','Movimenti','⇄'],['scadenze','Scadenze','!'],['dotazioni','Dotazioni ambulanze','✚'],['inventario','Inventario','▧'],['riordino','Riordino','☑'],['impostazioni','Impostazioni','⚙']];
 $('#nav').innerHTML=navItems.map(([id,l,ic])=>`<button class="nav-btn ${id==='dashboard'?'active':''}" data-page="${id}"><span>${ic}</span>${l}</button>`).join('');
-$('#nav').addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(b)showPage(b.dataset.page)});
+$('#nav').addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(b){dashboardTargetFilter=null;showPage(b.dataset.page)}});
 
 function toast(msg,err=false){const t=$('#toast');t.textContent=msg;t.className='toast show'+(err?' error':'');setTimeout(()=>t.className='toast',2600)}
 function modal(html){const d=document.createElement('div');d.className='modal-backdrop';d.innerHTML=`<div class="modal">${html}</div>`;d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-close]'))d.remove()});document.body.appendChild(d);return d}
@@ -197,22 +197,22 @@ async function renderDashboard(){
  </div>
 
  <div class="dashboard-alerts">
-   <div class="dashboard-alert clickable ${low?'warn':'ok'}" data-dashboard-go="riordino" tabindex="0" role="button" aria-label="Apri lista riordino">
+   <div class="dashboard-alert clickable ${low?'warn':'ok'}" data-dashboard-go="riordino" data-dashboard-filter="low-stock" tabindex="0" role="button" aria-label="Apri lista riordino">
      <h3><span>⚠ Articoli sotto scorta</span><span class="alert-count">${low}</span></h3>
      ${alertList(lowRows,x=>`<strong>${esc(x.codice||'')}</strong> — ${esc(x.nome||'')} · giacenza ${fmt(x.giacenza_totale)} / minimo ${fmt(x.scorta_minima)} ${esc(x.unita_misura||'')}`,'Nessun articolo sotto scorta')}
    </div>
 
-   <div class="dashboard-alert clickable ${due30.length?'warn':'ok'}" data-dashboard-go="scadenze" tabindex="0" role="button" aria-label="Apri scadenze entro 30 giorni">
+   <div class="dashboard-alert clickable ${due30.length?'warn':'ok'}" data-dashboard-go="scadenze" data-dashboard-filter="due30" tabindex="0" role="button" aria-label="Apri scadenze entro 30 giorni">
      <h3><span>⏳ Scadenze entro 30 giorni</span><span class="alert-count">${due30.length}</span></h3>
      ${alertList(due30,lotLabel,'Nessun lotto in scadenza entro 30 giorni')}
    </div>
 
-   <div class="dashboard-alert clickable ${expired?'danger':'ok'}" data-dashboard-go="scadenze" tabindex="0" role="button" aria-label="Apri lotti scaduti">
+   <div class="dashboard-alert clickable ${expired?'danger':'ok'}" data-dashboard-go="scadenze" data-dashboard-filter="expired" tabindex="0" role="button" aria-label="Apri lotti scaduti">
      <h3><span>⛔ Lotti scaduti</span><span class="alert-count">${expired}</span></h3>
      ${alertList(expiredLots,lotLabel,'Nessun lotto scaduto')}
    </div>
 
-   <div class="dashboard-alert clickable ${missing?'info':'ok'}" data-dashboard-go="dotazioni" tabindex="0" role="button" aria-label="Apri dotazioni ambulanze">
+   <div class="dashboard-alert clickable ${missing?'info':'ok'}" data-dashboard-go="dotazioni" data-dashboard-filter="missing" tabindex="0" role="button" aria-label="Apri dotazioni ambulanze">
      <h3><span>🚑 Dotazioni ambulanze da reintegrare</span><span class="alert-count">${missing}</span></h3>
      ${alertList(missingRows,x=>`<strong>${esc(x.ubicazione||'Mezzo')}</strong> — ${esc(x.codice||'')} ${esc(x.articolo||'')} · mancano <strong>${fmt(x.quantita_mancante)}</strong> ${esc(x.unita_misura||'')}`,'Nessuna dotazione da reintegrare')}
    </div>
@@ -226,7 +226,7 @@ async function renderDashboard(){
  </div>`;
 
  $('#page-dashboard').querySelectorAll('[data-dashboard-go]').forEach(card=>{
-   const open=()=>showPage(card.dataset.dashboardGo);
+   const open=()=>{dashboardTargetFilter={page:card.dataset.dashboardGo,type:card.dataset.dashboardFilter||null};showPage(card.dataset.dashboardGo)};
    card.addEventListener('click',open);
    card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});
  });
@@ -466,26 +466,38 @@ function quickMovementModal(tipo){
 async function renderScadenze(){
  await loadBase();
  const p=$('#page-scadenze');
- let selectedCategory=null;
+ let statusFilter=(dashboardTargetFilter?.page==='scadenze')?dashboardTargetFilter.type:null;
+ dashboardTargetFilter=null;
+ let selectedCategory=statusFilter?'all':null;
  const activeCats=cache.categorie.filter(c=>c.attiva);
  const catButtons=activeCats.map((c,i)=>`<button type="button" class="category-filter cat-${i%12}" data-cat="${c.id}">${esc(c.nome)}</button>`).join('');
  const lots=cache.lotti.filter(x=>x.data_scadenza).sort((a,b)=>a.data_scadenza.localeCompare(b.data_scadenza));
+ const viewLabel=statusFilter==='expired'?'⛔ Vista: lotti scaduti':statusFilter==='due30'?'⏳ Vista: scadenze entro 30 giorni':'';
 
  p.innerHTML=pageHead('Scadenze')+
- `<div class="hint" style="margin-bottom:10px">Seleziona una categoria per visualizzare le scadenze.</div>
+ `${viewLabel?`<div class="notice" style="margin-bottom:12px"><strong>${viewLabel}</strong></div>`:''}
+ <div class="hint" style="margin-bottom:10px">${statusFilter?'Puoi restringere ulteriormente la vista scegliendo una categoria.':'Seleziona una categoria per visualizzare le scadenze.'}</div>
  <div class="category-buttons">
-   <button type="button" class="category-filter" data-cat="all">Tutti</button>
+   <button type="button" class="category-filter ${selectedCategory==='all'?'active':''}" data-cat="all">Tutti</button>
    ${catButtons}
  </div>
- <div id="scadenzeTable" class="article-table-hidden"></div>`;
+ <div id="scadenzeTable" class="${selectedCategory?'':'article-table-hidden'}"></div>`;
 
  const filtered=()=>{
-   if(!selectedCategory)return [];
-   if(selectedCategory==='all')return lots;
-   return lots.filter(l=>{
-     const art=cache.articoli.find(a=>a.id===l.articolo_id);
-     return art?.categoria_id===selectedCategory;
-   });
+   let data=lots;
+   if(selectedCategory&&selectedCategory!=='all'){
+     data=data.filter(l=>{
+       const art=cache.articoli.find(a=>a.id===l.articolo_id);
+       return art?.categoria_id===selectedCategory;
+     });
+   }else if(!selectedCategory)return [];
+   const now=new Date();
+   if(statusFilter==='expired') data=data.filter(l=>new Date(l.data_scadenza+'T23:59:59')<now);
+   if(statusFilter==='due30'){
+     const d30=new Date(now);d30.setDate(now.getDate()+30);
+     data=data.filter(l=>{const z=new Date(l.data_scadenza+'T12:00:00');return z>=now&&z<=d30});
+   }
+   return data;
  };
 
  const draw=()=>{
@@ -505,31 +517,37 @@ async function renderScadenze(){
    p.querySelectorAll('.category-filter').forEach(x=>x.classList.toggle('active',x===btn));
    draw();
  }));
+ if(selectedCategory)draw();
 }
 
 async function renderDotazioni(){
  await loadBase();
  const p=$('#page-dotazioni');
  const rows=(await safe(sb.from('mag_reintegri').select('*').order('ubicazione'))).filter(r=>r.ubicazione_codice.startsWith('MEZZO_'));
- let selectedCategory=null;
+ let statusFilter=(dashboardTargetFilter?.page==='dotazioni')?dashboardTargetFilter.type:null;
+ dashboardTargetFilter=null;
+ let selectedCategory=statusFilter?'all':null;
  const activeCats=cache.categorie.filter(c=>c.attiva);
  const catButtons=activeCats.map((c,i)=>`<button type="button" class="category-filter cat-${i%12}" data-cat="${c.id}">${esc(c.nome)}</button>`).join('');
 
  p.innerHTML=pageHead('Dotazioni ambulanze','<button class="btn primary" id="newReq">+ Imposta dotazione minima</button>')+
- `<div class="hint" style="margin-bottom:10px">Seleziona una categoria per visualizzare le dotazioni delle ambulanze.</div>
+ `${statusFilter==='missing'?'<div class="notice" style="margin-bottom:12px"><strong>🚑 Vista: solo dotazioni da reintegrare</strong></div>':''}
+ <div class="hint" style="margin-bottom:10px">${statusFilter?'Puoi restringere ulteriormente la vista scegliendo una categoria.':'Seleziona una categoria per visualizzare le dotazioni delle ambulanze.'}</div>
  <div class="category-buttons">
-   <button type="button" class="category-filter" data-cat="all">Tutti</button>
+   <button type="button" class="category-filter ${selectedCategory==='all'?'active':''}" data-cat="all">Tutti</button>
    ${catButtons}
  </div>
- <div id="dotazioniTable" class="article-table-hidden"></div>`;
+ <div id="dotazioniTable" class="${selectedCategory?'':'article-table-hidden'}"></div>`;
 
  const filtered=()=>{
    if(!selectedCategory)return [];
-   if(selectedCategory==='all')return rows;
-   return rows.filter(r=>{
+   let data=rows;
+   if(statusFilter==='missing')data=data.filter(r=>Number(r.quantita_mancante)>0);
+   if(selectedCategory!=='all')data=data.filter(r=>{
      const art=cache.articoli.find(a=>a.id===r.articolo_id);
      return art?.categoria_id===selectedCategory;
    });
+   return data;
  };
 
  const draw=()=>{
@@ -551,6 +569,7 @@ async function renderDotazioni(){
  }));
 
  $('#newReq').onclick=()=>reqModal();
+ if(selectedCategory)draw();
 
  p.addEventListener('click',async e=>{
    const b=e.target.closest('[data-reintegra-art]');
@@ -614,6 +633,8 @@ async function renderInventario(){
 async function renderRiordino(){
  await loadBase();
  const p=$('#page-riordino');
+ const directLowStock=dashboardTargetFilter?.page==='riordino'&&dashboardTargetFilter?.type==='low-stock';
+ dashboardTargetFilter=null;
  const r=await safe(sb.from('mag_riordino').select('*').order('nome'));
  const STORAGE_KEY='cge_magazzino_riordino_compilato_v1';
  let saved={};
@@ -641,7 +662,7 @@ async function renderRiordino(){
  if(!manualEntries.length){
    manualEntries=[['manual:initial',{codice:'',nome:'',um:'pz',qta:'',fornitore:'',note:'',ordinato:false}]];
  }
- const manualRows=manualEntries.map(([key,s])=>`<tr data-rio-key="${esc(key)}">
+ const manualRows=manualEntries.map(([key,s])=>`<tr data-rio-key="${esc(key)}" ${directLowStock?'style="display:none"':''}>
    <td><input class="manual-code" value="${esc(s.codice||'')}" placeholder="Codice"></td>
    <td><input class="manual-name" value="${esc(s.nome||'')}" placeholder="Articolo"></td>
    <td><input class="manual-um" value="${esc(s.um||'pz')}" placeholder="U.M."></td>
@@ -662,6 +683,7 @@ async function renderRiordino(){
     </div>
   </div>
  </div>
+ ${directLowStock?'<div class="notice" style="margin-bottom:12px"><strong>⚠ Vista: solo articoli sotto scorta</strong></div>':''}
  <div class="hint" style="margin-bottom:12px">Compila quantità, fornitore, note e stato. Le righe suggerite derivano automaticamente dalle scorte sotto il minimo.</div>
  <div class="category-buttons no-print" id="rioCategoryButtons">
    ${cache.categorie.filter(c=>c.attiva).map((cat,i)=>`<button type="button" class="category-filter cat-${i%12}" data-rio-filter="${cat.id}">${esc(cat.nome)}</button>`).join('')}
@@ -698,7 +720,7 @@ async function renderRiordino(){
    p.querySelectorAll('[data-rio-filter]').forEach(x=>x.classList.toggle('active',x===btn));
    p.querySelectorAll('#rioBody tr').forEach(tr=>{
      const key=tr.dataset.rioKey||'';
-     if(key.startsWith('manual:')){tr.style.display='';return;}
+     if(key.startsWith('manual:')){tr.style.display=directLowStock?'none':'';return;}
      const cat=tr.dataset.rioCat||'';
      tr.style.display=(cat===filter)?'':'none';
    });

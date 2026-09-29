@@ -419,41 +419,98 @@ async function renderMovimenti(){
  };
 }
 function movementModal(pref={}){const types=['CARICO','SCARICO','TRASFERIMENTO','RESTITUZIONE','SMALTIMENTO','RETTIFICA_POSITIVA','RETTIFICA_NEGATIVA'];const m=modal(`<h3>Registra movimento</h3><form id="movForm" class="grid-2"><label>Tipo<select name="p_tipo" required>${types.map(t=>`<option ${pref.tipo===t?'selected':''}>${t}</option>`).join('')}</select></label><label>Lotto<select name="p_lotto_id" required><option value="">Seleziona…</option>${cache.lotti.map(l=>`<option value="${l.id}" ${pref.lotto_id===l.id?'selected':''}>${esc(l.mag_articoli?.codice||'')} — ${esc(l.mag_articoli?.nome||'')} | lotto ${esc(l.numero_lotto||'—')} | scad. ${dateIt(l.data_scadenza)}</option>`).join('')}</select></label><label>Quantità<input name="p_quantita" type="number" step="0.001" min="0.001" required value="${pref.quantita||''}"></label><label>Origine<select name="p_da_ubicazione"><option value="">—</option>${cache.ubicazioni.map(u=>`<option value="${u.codice}" ${pref.da===u.codice?'selected':''}>${esc(u.nome)}</option>`).join('')}</select></label><label>Destinazione<select name="p_a_ubicazione"><option value="">—</option>${cache.ubicazioni.map(u=>`<option value="${u.codice}" ${pref.a===u.codice?'selected':''}>${esc(u.nome)}</option>`).join('')}</select></label><label>Causale<input name="p_causale" value="${esc(pref.causale||'')}"></label><div class="hint" style="grid-column:1/-1">CARICO e RETTIFICA_POSITIVA richiedono destinazione. SCARICO/SMALTIMENTO/RETTIFICA_NEGATIVA richiedono origine. TRASFERIMENTO/RESTITUZIONE richiedono entrambe.</div><div class="modal-foot" style="grid-column:1/-1"><button type="button" class="btn ghost" data-close>Annulla</button><button class="btn primary">Conferma movimento</button></div></form>`);m.querySelector('#movForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);const args=Object.fromEntries(f.entries());args.p_quantita=Number(args.p_quantita);args.p_da_ubicazione=args.p_da_ubicazione||null;args.p_a_ubicazione=args.p_a_ubicazione||null;args.p_causale=args.p_causale||null;try{await safe(sb.rpc('mag_registra_movimento',args));m.remove();toast('Movimento registrato');renderMovimenti()}catch(er){toast(er.message,true)}}}
-function quickMovementModal(tipo){
+async function quickMovementModal(tipo){
+  await loadBase();
   const cfg={
-    CARICO:{titolo:'Carico materiale',classe:'carico',testo:'Registra materiale in entrata. La destinazione predefinita è il Magazzino centrale.'},
-    SCARICO:{titolo:'Scarico materiale',classe:'scarico',testo:'Registra materiale consumato o uscito definitivamente dalla giacenza.'},
-    TRASFERIMENTO:{titolo:'Trasferimento materiale',classe:'trasferimento',testo:'Sposta materiale tra Magazzino centrale e ambulanze senza considerarlo consumato.'}
+    CARICO:{titolo:'Carico materiale',classe:'carico',testo:'Seleziona l’articolo. Se non ha ancora un lotto puoi crearlo direttamente qui.'},
+    SCARICO:{titolo:'Scarico materiale',classe:'scarico',testo:'Sono mostrati solo articoli/lotti che hanno una giacenza disponibile.'},
+    TRASFERIMENTO:{titolo:'Trasferimento materiale',classe:'trasferimento',testo:'Sono mostrati solo articoli/lotti che hanno materiale disponibile da trasferire.'}
   }[tipo];
-  const lotOptions=cache.lotti.map(l=>`<option value="${l.id}">${esc(l.mag_articoli?.codice||'')} — ${esc(l.mag_articoli?.nome||'')} | lotto ${esc(l.numero_lotto||'—')} | scad. ${dateIt(l.data_scadenza)}</option>`).join('');
+
   const locOptions=(selected='')=>cache.ubicazioni.map(u=>`<option value="${u.codice}" ${u.codice===selected?'selected':''}>${esc(u.nome)}</option>`).join('');
+  let inventory=[];
+  if(tipo!=='CARICO'){
+    inventory=await safe(sb.from('mag_inventario').select('*').gt('quantita',0));
+  }
+  const qtyByLot={};
+  inventory.forEach(x=>{qtyByLot[x.lotto_id]=(qtyByLot[x.lotto_id]||0)+Number(x.quantita||0)});
+  const availableLots=tipo==='CARICO'?cache.lotti:cache.lotti.filter(l=>Number(qtyByLot[l.id]||0)>0);
+
   let campi='';
   if(tipo==='CARICO'){
-    campi=`<label>Articolo / lotto<select name="lotto" required><option value="">Seleziona…</option>${lotOptions}</select></label>
+    const articleOptions=cache.articoli.filter(a=>a.attivo).map(a=>`<option value="${a.id}">${esc(a.codice)} — ${esc(a.nome)}</option>`).join('');
+    campi=`<label>Articolo<select name="articolo" id="caricoArticolo" required><option value="">Seleziona…</option>${articleOptions}</select></label>
+    <label>Lotto<select name="lotto" id="caricoLotto" required disabled><option value="">Seleziona prima l’articolo…</option></select></label>
+    <div id="newLotFields" class="grid-2 hidden" style="grid-column:1/-1">
+      <label>Numero lotto<input name="numero_lotto" placeholder="Facoltativo"></label>
+      <label>Data scadenza<input name="data_scadenza" type="date"></label>
+    </div>
     <label>Quantità<input name="quantita" type="number" min="0.001" step="0.001" required></label>
     <label>Destinazione<select name="destinazione" required>${locOptions('MAG_CENTRALE')}</select></label>
-    <label>Causale<input name="causale" placeholder="Es. acquisto, donazione, carico iniziale"></label>`;
-  }else if(tipo==='SCARICO'){
-    campi=`<label>Articolo / lotto<select name="lotto" required><option value="">Seleziona…</option>${lotOptions}</select></label>
-    <label>Quantità<input name="quantita" type="number" min="0.001" step="0.001" required></label>
-    <label>Origine<select name="origine" required>${locOptions('MAG_CENTRALE')}</select></label>
-    <label>Causale<input name="causale" placeholder="Es. consumo, utilizzo, materiale prelevato"></label>`;
+    <label style="grid-column:1/-1">Causale<input name="causale" placeholder="Es. acquisto, donazione, carico iniziale"></label>`;
   }else{
-    campi=`<label>Articolo / lotto<select name="lotto" required><option value="">Seleziona…</option>${lotOptions}</select></label>
-    <label>Quantità<input name="quantita" type="number" min="0.001" step="0.001" required></label>
-    <label>Origine<select name="origine" required>${locOptions('MAG_CENTRALE')}</select></label>
-    <label>Destinazione<select name="destinazione" required><option value="">Seleziona…</option>${locOptions()}</select></label>
-    <label style="grid-column:1/-1">Causale<input name="causale" placeholder="Es. reintegro Ambulanza 06"></label>`;
+    const lotOptions=availableLots.map(l=>`<option value="${l.id}">${esc(l.mag_articoli?.codice||'')} — ${esc(l.mag_articoli?.nome||'')} | lotto ${esc(l.numero_lotto||'—')} | disponibile ${fmt(qtyByLot[l.id]||0)}</option>`).join('');
+    const noStock=!availableLots.length?'<option value="">Nessun materiale disponibile</option>':'<option value="">Seleziona…</option>';
+    if(tipo==='SCARICO'){
+      campi=`<label>Articolo / lotto<select name="lotto" required ${!availableLots.length?'disabled':''}>${noStock}${lotOptions}</select></label>
+      <label>Quantità<input name="quantita" type="number" min="0.001" step="0.001" required></label>
+      <label>Origine<select name="origine" required>${locOptions('MAG_CENTRALE')}</select></label>
+      <label>Causale<input name="causale" placeholder="Es. consumo, utilizzo, materiale prelevato"></label>`;
+    }else{
+      campi=`<label>Articolo / lotto<select name="lotto" required ${!availableLots.length?'disabled':''}>${noStock}${lotOptions}</select></label>
+      <label>Quantità<input name="quantita" type="number" min="0.001" step="0.001" required></label>
+      <label>Origine<select name="origine" required>${locOptions('MAG_CENTRALE')}</select></label>
+      <label>Destinazione<select name="destinazione" required><option value="">Seleziona…</option>${locOptions()}</select></label>
+      <label style="grid-column:1/-1">Causale<input name="causale" placeholder="Es. reintegro Ambulanza 06"></label>`;
+    }
   }
+
   const m=modal(`<h3>${cfg.titolo}</h3><p class="hint">${cfg.testo}</p><form id="quickMovForm" class="grid-2">${campi}<div class="modal-foot" style="grid-column:1/-1"><button type="button" class="btn ghost" data-close>Annulla</button><button class="btn ${cfg.classe}" type="submit">Conferma ${cfg.titolo.toLowerCase()}</button></div></form>`);
+
+  if(tipo==='CARICO'){
+    const artSel=m.querySelector('#caricoArticolo');
+    const lotSel=m.querySelector('#caricoLotto');
+    const newFields=m.querySelector('#newLotFields');
+    const refreshLots=()=>{
+      const artId=artSel.value;
+      if(!artId){
+        lotSel.disabled=true;
+        lotSel.innerHTML='<option value="">Seleziona prima l’articolo…</option>';
+        newFields.classList.add('hidden');
+        return;
+      }
+      const lots=cache.lotti.filter(l=>l.articolo_id===artId);
+      lotSel.disabled=false;
+      lotSel.innerHTML=lots.map(l=>`<option value="${l.id}">Lotto ${esc(l.numero_lotto||'—')} · scad. ${dateIt(l.data_scadenza)}</option>`).join('')+
+        '<option value="__NEW__">＋ Nuovo lotto / senza lotto</option>';
+      if(!lots.length)lotSel.value='__NEW__';
+      newFields.classList.toggle('hidden',lotSel.value!=='__NEW__');
+    };
+    artSel.addEventListener('change',refreshLots);
+    lotSel.addEventListener('change',()=>newFields.classList.toggle('hidden',lotSel.value!=='__NEW__'));
+  }
+
   m.querySelector('#quickMovForm').onsubmit=async e=>{
     e.preventDefault();
     const f=new FormData(e.target);
     const origine=f.get('origine')||null;
     const destinazione=f.get('destinazione')||null;
     if(tipo==='TRASFERIMENTO' && origine===destinazione){toast('Origine e destinazione devono essere diverse.',true);return}
-    const args={p_tipo:tipo,p_lotto_id:f.get('lotto'),p_quantita:Number(f.get('quantita')),p_da_ubicazione:origine,p_a_ubicazione:destinazione,p_causale:f.get('causale')||null};
+    let lottoId=f.get('lotto');
+
     try{
+      if(tipo==='CARICO' && lottoId==='__NEW__'){
+        const artId=f.get('articolo');
+        const obj={
+          articolo_id:artId,
+          numero_lotto:(f.get('numero_lotto')||'').trim()||null,
+          data_scadenza:f.get('data_scadenza')||null,
+          note:'Creato durante il carico materiale'
+        };
+        const nuovo=await safe(sb.from('mag_lotti').insert(obj).select('id').single());
+        lottoId=nuovo.id;
+      }
+      const args={p_tipo:tipo,p_lotto_id:lottoId,p_quantita:Number(f.get('quantita')),p_da_ubicazione:origine,p_a_ubicazione:destinazione,p_causale:f.get('causale')||null};
       await safe(sb.rpc('mag_registra_movimento',args));
       m.remove();
       toast(tipo==='CARICO'?'Carico registrato':tipo==='SCARICO'?'Scarico registrato':'Trasferimento registrato');

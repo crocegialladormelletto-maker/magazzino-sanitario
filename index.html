@@ -539,6 +539,7 @@ async function renderInventario(){
 }
 
 async function renderRiordino(){
+ await loadBase();
  const p=$('#page-riordino');
  const r=await safe(sb.from('mag_riordino').select('*').order('nome'));
  const STORAGE_KEY='cge_magazzino_riordino_compilato_v1';
@@ -548,7 +549,9 @@ async function renderRiordino(){
  const autoRows=r.map((x,i)=>{
    const key='auto:'+String(x.codice||i);
    const s=saved[key]||{};
-   return `<tr data-rio-key="${esc(key)}">
+   const art=cache.articoli.find(a=>String(a.codice||'')===String(x.codice||''));
+   const catId=art?.categoria_id||'';
+   return `<tr data-rio-key="${esc(key)}" data-rio-cat="${esc(catId)}">
     <td>${esc(x.codice)}</td>
     <td><strong>${esc(x.nome)}</strong></td>
     <td>${esc(x.unita_misura||'')}</td>
@@ -579,6 +582,10 @@ async function renderRiordino(){
  p.innerHTML=pageHead('Lista riordino','<button class="btn primary" id="addRioRow">+ Aggiungi riga</button><button class="btn secondary" id="saveRio">Salva tabella</button><button class="btn ghost" id="csvRio">CSV</button><button class="btn ghost" id="printRio">Stampa</button>')+
  `<div class="print-title"><h2 style="margin:0;color:#0d3761">Lista riordino – Croce Gialla Emergenza ODV</h2><div>Data: ${new Date().toLocaleDateString('it-IT')}</div></div>
  <div class="hint" style="margin-bottom:12px">Compila quantità, fornitore, note e stato. Le righe suggerite derivano automaticamente dalle scorte sotto il minimo.</div>
+ <div class="category-buttons" id="rioCategoryButtons">
+   <button type="button" class="category-filter active" data-rio-filter="all">Tutti</button>
+   ${cache.categorie.filter(c=>c.attiva).map((cat,i)=>`<button type="button" class="category-filter cat-${i%12}" data-rio-filter="${cat.id}">${esc(cat.nome)}</button>`).join('')}
+ </div>
  <div class="table-wrap">
   <table class="riordino-edit">
    <thead><tr><th>Codice</th><th>Articolo</th><th>U.M.</th><th>Giacenza</th><th>Scorta min.</th><th>Da ordinare</th><th>Fornitore</th><th>Note</th><th>Ordinato</th></tr></thead>
@@ -605,6 +612,17 @@ async function renderRiordino(){
    });
    return out;
  };
+
+ p.querySelectorAll('[data-rio-filter]').forEach(btn=>btn.addEventListener('click',()=>{
+   const filter=btn.dataset.rioFilter;
+   p.querySelectorAll('[data-rio-filter]').forEach(x=>x.classList.toggle('active',x===btn));
+   p.querySelectorAll('#rioBody tr').forEach(tr=>{
+     const key=tr.dataset.rioKey||'';
+     if(key.startsWith('manual:')){tr.style.display='';return;}
+     const cat=tr.dataset.rioCat||'';
+     tr.style.display=(filter==='all'||cat===filter)?'':'none';
+   });
+ }));
 
  $('#saveRio').onclick=()=>{
    localStorage.setItem(STORAGE_KEY,JSON.stringify(collect()));

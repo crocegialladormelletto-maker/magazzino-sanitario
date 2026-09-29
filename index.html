@@ -34,9 +34,10 @@
 .metric.kpi-alert{background:#fff1e6;border-color:#f7c79b}.metric.kpi-alert .label,.metric.kpi-alert .value{color:#9a4700}.panel{padding:18px;margin-top:16px}.panel h3{margin:0 0 14px;color:var(--blue)}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.op-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0 0 18px}.op-card{border:0;border-radius:18px;padding:20px;text-align:left;cursor:pointer;box-shadow:var(--shadow);transition:.18s ease}.op-card:hover{transform:translateY(-2px)}.op-card.active{outline:4px solid rgba(13,55,97,.22);box-shadow:0 8px 22px rgba(13,55,97,.18);transform:translateY(-2px)}.op-card .op-icon{font-size:34px;line-height:1;margin-bottom:10px}.op-card strong{display:block;font-size:20px;margin-bottom:5px}.op-card span{display:block;font-size:13px;line-height:1.35;opacity:.92}.op-card.carico{background:#dcfce7;color:#14532d}.op-card.scarico{background:#fee2e2;color:#7f1d1d}.op-card.trasferimento{background:#dbeafe;color:#1e3a8a}@media(max-width:760px){.op-grid{grid-template-columns:1fr}}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:white}table{width:100%;border-collapse:collapse;font-size:13px;min-width:760px}th,td{padding:10px 11px;border-bottom:1px solid #e8edf2;text-align:left;vertical-align:top}th{background:#f8fafc;color:#334155;position:sticky;top:0}tr:last-child td{border-bottom:0}.tag{display:inline-block;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:800;background:#e8eef5;color:#334155}.tag.red{background:#fee2e2;color:#991b1b}.tag.yellow{background:#fef3c7;color:#92400e}.tag.green{background:#dcfce7;color:#166534}.toolbar{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:12px}.toolbar label{min-width:190px}
 .category-buttons{display:grid;grid-template-columns:repeat(4,minmax(220px,1fr));gap:16px;margin:18px 0 24px;align-items:stretch}.category-filter{border:1px solid transparent;border-radius:16px;padding:24px 18px;min-height:92px;font-size:18px;font-weight:900;cursor:pointer;color:#fff;transition:.15s ease;box-shadow:0 6px 16px rgba(15,23,42,.12);display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2}.category-filter:hover{transform:translateY(-3px) scale(1.01);filter:brightness(.97)}.category-filter.active{outline:3px solid rgba(13,55,97,.28);box-shadow:0 5px 14px rgba(13,55,97,.20)}.category-filter[data-cat="all"]{background:#f5c518;color:#1f2937}.category-filter.cat-0{background:#2563eb}.category-filter.cat-1{background:#7c3aed}.category-filter.cat-2{background:#16a34a}.category-filter.cat-3{background:#ea580c}.category-filter.cat-4{background:#0891b2}.category-filter.cat-5{background:#dc2626}.category-filter.cat-6{background:#0f766e}.category-filter.cat-7{background:#65a30d}.category-filter.cat-8{background:#9333ea}.category-filter.cat-9{background:#475569}.category-filter.cat-10{background:#db2777}.category-filter.cat-11{background:#ca8a04}.article-table-hidden{display:none}.modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.55);display:grid;place-items:center;z-index:100;padding:20px}.modal{background:white;border-radius:18px;box-shadow:var(--shadow);width:min(720px,100%);max-height:90vh;overflow:auto;padding:20px}.modal h3{margin-top:0;color:var(--blue)}.modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.empty{padding:28px;text-align:center;color:var(--muted)}.toast{position:fixed;right:18px;bottom:18px;z-index:200;background:#0f172a;color:white;padding:12px 16px;border-radius:10px;box-shadow:var(--shadow);transform:translateY(120px);opacity:0;transition:.25s}.toast.show{transform:translateY(0);opacity:1}.toast.error{background:#991b1b}.hint{font-size:12px;color:var(--muted)}.danger-text{color:var(--red);font-weight:800}.ok-text{color:var(--green);font-weight:800}
+.riordino-edit input,.riordino-edit select{margin:0;min-width:90px;padding:7px 8px}.riordino-edit input[type="checkbox"]{width:20px;height:20px;min-width:20px}.riordino-edit .note-input{min-width:180px}.riordino-edit .fornitore-input{min-width:150px}.riordino-head{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.print-title{display:none}
 @media(max-width:1000px){.category-buttons{grid-template-columns:repeat(2,minmax(180px,1fr))}.category-filter{min-height:82px;font-size:16px;padding:20px 14px}.cards{grid-template-columns:repeat(2,1fr)}.layout{grid-template-columns:1fr}.sidebar{position:static;height:auto;display:flex;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px}.nav-btn{width:auto;white-space:nowrap}.grid-2,.grid-3{grid-template-columns:1fr}.content{padding:16px}.topbar{padding:0 12px}.brand span{display:none}}
 @media(max-width:600px){.category-buttons{grid-template-columns:1fr}.category-filter{min-height:72px;font-size:15px}.cards{grid-template-columns:1fr}.brand strong{font-size:14px}.top-actions #userLabel{display:none}.page-head{align-items:flex-start;flex-direction:column}.content{padding:12px}.login-card{padding:22px}.login-logo{width:115px;height:115px}}
-@media print{.sidebar,.topbar,.actions,.toolbar,.btn{display:none!important}.layout{display:block}.content{padding:0}.panel,.card{box-shadow:none;border:0}.page{display:block!important}.page.hidden{display:none!important}body{background:white}}
+@media print{.sidebar,.topbar,.actions,.toolbar,.btn{display:none!important}.layout{display:block}.content{padding:0}.panel,.card{box-shadow:none;border:0}.page{display:block!important}.page.hidden{display:none!important}body{background:white}.print-title{display:block;margin-bottom:14px}.riordino-edit input,.riordino-edit select{border:0!important;box-shadow:none!important;padding:0;background:transparent}.riordino-edit input[type="checkbox"]{appearance:auto}.riordino-edit th,.riordino-edit td{font-size:11px;padding:7px}.riordino-edit .delete-manual{display:none!important}}
 </style>
 </head>
 <body>
@@ -537,7 +538,122 @@ async function renderInventario(){
  };
 }
 
-async function renderRiordino(){const p=$('#page-riordino');const r=await safe(sb.from('mag_riordino').select('*').order('nome'));p.innerHTML=pageHead('Lista riordino','<button class="btn ghost" id="csvRio">CSV</button><button class="btn ghost" onclick="window.print()">Stampa</button>')+table(['Codice','Articolo','Scorta minima','Giacenza','Da ordinare'],r.map(x=>`<tr><td>${esc(x.codice)}</td><td><strong>${esc(x.nome)}</strong></td><td>${fmt(x.scorta_minima)} ${esc(x.unita_misura)}</td><td>${fmt(x.giacenza_totale)}</td><td class="danger-text">${fmt(x.quantita_suggerita)} ${esc(x.unita_misura)}</td></tr>`).join(''));$('#csvRio').onclick=()=>csv('riordino.csv',['Codice','Articolo','Scorta minima','Giacenza','Quantità suggerita','U.M.'],r.map(x=>[x.codice,x.nome,x.scorta_minima,x.giacenza_totale,x.quantita_suggerita,x.unita_misura]))}
+async function renderRiordino(){
+ const p=$('#page-riordino');
+ const r=await safe(sb.from('mag_riordino').select('*').order('nome'));
+ const STORAGE_KEY='cge_magazzino_riordino_compilato_v1';
+ let saved={};
+ try{saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')||{}}catch(_){saved={}}
+
+ const autoRows=r.map((x,i)=>{
+   const key='auto:'+String(x.codice||i);
+   const s=saved[key]||{};
+   return `<tr data-rio-key="${esc(key)}">
+    <td>${esc(x.codice)}</td>
+    <td><strong>${esc(x.nome)}</strong></td>
+    <td>${esc(x.unita_misura||'')}</td>
+    <td>${fmt(x.giacenza_totale)}</td>
+    <td>${fmt(x.scorta_minima)}</td>
+    <td><input class="qty-input" type="number" min="0" step="0.001" value="${esc(s.qta??x.quantita_suggerita??0)}"></td>
+    <td><input class="fornitore-input" value="${esc(s.fornitore||'')}" placeholder="Fornitore"></td>
+    <td><input class="note-input" value="${esc(s.note||'')}" placeholder="Note"></td>
+    <td style="text-align:center"><input class="ordered-input" type="checkbox" ${s.ordinato?'checked':''}></td>
+   </tr>`;
+ }).join('');
+
+ const manualRows=Object.entries(saved).filter(([k])=>k.startsWith('manual:')).map(([key,s])=>`<tr data-rio-key="${esc(key)}">
+   <td><input class="manual-code" value="${esc(s.codice||'')}" placeholder="Codice"></td>
+   <td><input class="manual-name" value="${esc(s.nome||'')}" placeholder="Articolo"></td>
+   <td><input class="manual-um" value="${esc(s.um||'pz')}" placeholder="U.M."></td>
+   <td>—</td><td>—</td>
+   <td><input class="qty-input" type="number" min="0" step="0.001" value="${esc(s.qta||0)}"></td>
+   <td><input class="fornitore-input" value="${esc(s.fornitore||'')}" placeholder="Fornitore"></td>
+   <td><input class="note-input" value="${esc(s.note||'')}" placeholder="Note"></td>
+   <td style="text-align:center"><input class="ordered-input" type="checkbox" ${s.ordinato?'checked':''}><br><button class="btn small danger delete-manual" type="button">Elimina</button></td>
+  </tr>`).join('');
+
+ p.innerHTML=pageHead('Lista riordino','<button class="btn primary" id="addRioRow">+ Aggiungi riga</button><button class="btn secondary" id="saveRio">Salva tabella</button><button class="btn ghost" id="csvRio">CSV</button><button class="btn ghost" id="printRio">Stampa</button>')+
+ `<div class="print-title"><h2 style="margin:0;color:#0d3761">Lista riordino – Croce Gialla Emergenza ODV</h2><div>Data: ${new Date().toLocaleDateString('it-IT')}</div></div>
+ <div class="hint" style="margin-bottom:12px">Compila quantità, fornitore, note e stato. Le righe suggerite derivano automaticamente dalle scorte sotto il minimo.</div>
+ <div class="table-wrap">
+  <table class="riordino-edit">
+   <thead><tr><th>Codice</th><th>Articolo</th><th>U.M.</th><th>Giacenza</th><th>Scorta min.</th><th>Da ordinare</th><th>Fornitore</th><th>Note</th><th>Ordinato</th></tr></thead>
+   <tbody id="rioBody">${autoRows}${manualRows}</tbody>
+  </table>
+ </div>`;
+
+ const collect=()=>{
+   const out={};
+   p.querySelectorAll('#rioBody tr').forEach(tr=>{
+     const key=tr.dataset.rioKey;
+     const obj={
+       qta:tr.querySelector('.qty-input')?.value||'',
+       fornitore:tr.querySelector('.fornitore-input')?.value||'',
+       note:tr.querySelector('.note-input')?.value||'',
+       ordinato:!!tr.querySelector('.ordered-input')?.checked
+     };
+     if(key?.startsWith('manual:')){
+       obj.codice=tr.querySelector('.manual-code')?.value||'';
+       obj.nome=tr.querySelector('.manual-name')?.value||'';
+       obj.um=tr.querySelector('.manual-um')?.value||'';
+     }
+     out[key]=obj;
+   });
+   return out;
+ };
+
+ $('#saveRio').onclick=()=>{
+   localStorage.setItem(STORAGE_KEY,JSON.stringify(collect()));
+   toast('Tabella riordino salvata');
+ };
+
+ $('#addRioRow').onclick=()=>{
+   const key='manual:'+Date.now();
+   const tr=document.createElement('tr');
+   tr.dataset.rioKey=key;
+   tr.innerHTML=`<td><input class="manual-code" placeholder="Codice"></td>
+    <td><input class="manual-name" placeholder="Articolo"></td>
+    <td><input class="manual-um" value="pz" placeholder="U.M."></td>
+    <td>—</td><td>—</td>
+    <td><input class="qty-input" type="number" min="0" step="0.001" value="0"></td>
+    <td><input class="fornitore-input" placeholder="Fornitore"></td>
+    <td><input class="note-input" placeholder="Note"></td>
+    <td style="text-align:center"><input class="ordered-input" type="checkbox"><br><button class="btn small danger delete-manual" type="button">Elimina</button></td>`;
+   $('#rioBody').appendChild(tr);
+ };
+
+ p.addEventListener('click',e=>{
+   const b=e.target.closest('.delete-manual');
+   if(!b)return;
+   b.closest('tr')?.remove();
+ });
+
+ $('#printRio').onclick=()=>{
+   localStorage.setItem(STORAGE_KEY,JSON.stringify(collect()));
+   window.print();
+ };
+
+ $('#csvRio').onclick=()=>{
+   const data=[];
+   p.querySelectorAll('#rioBody tr').forEach(tr=>{
+     const tds=tr.children;
+     const key=tr.dataset.rioKey||'';
+     const manual=key.startsWith('manual:');
+     data.push([
+       manual?(tr.querySelector('.manual-code')?.value||''):tds[0].innerText.trim(),
+       manual?(tr.querySelector('.manual-name')?.value||''):tds[1].innerText.trim(),
+       manual?(tr.querySelector('.manual-um')?.value||''):tds[2].innerText.trim(),
+       manual?'':tds[3].innerText.trim(),
+       manual?'':tds[4].innerText.trim(),
+       tr.querySelector('.qty-input')?.value||'',
+       tr.querySelector('.fornitore-input')?.value||'',
+       tr.querySelector('.note-input')?.value||'',
+       tr.querySelector('.ordered-input')?.checked?'SI':'NO'
+     ]);
+   });
+   csv('riordino.csv',['Codice','Articolo','U.M.','Giacenza','Scorta minima','Da ordinare','Fornitore','Note','Ordinato'],data);
+ };
+}
 
 async function renderImpostazioni(){const p=$('#page-impostazioni');const s=(await safe(sb.from('mag_impostazioni').select('*').eq('id','principale').maybeSingle()))||{};p.innerHTML=pageHead('Impostazioni')+`<div class="grid-2"><div class="panel"><h3>Logo ufficiale</h3><img id="logoPreview" src="${s.logo_path?`${SUPABASE_URL}/storage/v1/object/public/magazzino-assets/${s.logo_path}`:'https://primary.jwwb.nl/public/s/b/j/temp-jdsqfuxejozahvwvidxb/logo-ridimensionato-no-sfondo-high.png?enable=upscale&enable-io=true&height=240'}" style="width:170px;height:170px;object-fit:contain;border:1px solid var(--line);border-radius:50%;background:white"><p class="hint">Il logo incluso nell'app è quello ufficiale fornito. Puoi sostituirlo qui e renderlo condiviso su tutti i dispositivi.</p><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp"><button class="btn primary" id="uploadLogo" style="margin-top:10px">Carica logo</button></div><div class="panel"><h3>Sicurezza accesso</h3><p>Il gestionale non dispone di registrazione pubblica. L'accesso ai dati è consentito soltanto all'account inserito nella lista autorizzata del magazzino.</p><p class="hint">Account attuale: <strong>${esc(session?.user?.email||'')}</strong></p></div></div>`;$('#uploadLogo').onclick=async()=>{const f=$('#logoFile').files[0];if(!f){toast('Seleziona un file',true);return}const ext=f.name.split('.').pop().toLowerCase();const path=`logo-ufficiale.${ext}`;try{await safe(sb.storage.from('magazzino-assets').upload(path,f,{upsert:true,contentType:f.type}));await safe(sb.from('mag_impostazioni').update({logo_path:path,aggiornato_il:new Date().toISOString(),aggiornato_da:session.user.id}).eq('id','principale'));toast('Logo aggiornato');renderImpostazioni()}catch(er){toast(er.message,true)}}}
 

@@ -433,7 +433,60 @@ async function renderScadenze(){
  }));
 }
 
-async function renderDotazioni(){await loadBase();const p=$('#page-dotazioni');const rows=await safe(sb.from('mag_reintegri').select('*').order('ubicazione'));p.innerHTML=pageHead('Dotazioni ambulanze','<button class="btn primary" id="newReq">+ Imposta dotazione minima</button>')+table(['Mezzo','Articolo','Minimo','Presente','Mancante',''],rows.filter(r=>r.ubicazione_codice.startsWith('MEZZO_')).map(r=>`<tr><td><strong>${esc(r.ubicazione)}</strong></td><td>${esc(r.codice)} — ${esc(r.articolo)}</td><td>${fmt(r.quantita_minima)} ${esc(r.unita_misura)}</td><td>${fmt(r.quantita_attuale)}</td><td class="${Number(r.quantita_mancante)>0?'danger-text':'ok-text'}">${fmt(r.quantita_mancante)}</td><td>${Number(r.quantita_mancante)>0?`<button class="btn small primary" data-reintegra-art="${r.articolo_id}" data-reintegra-mezzo="${r.ubicazione_codice}" data-q="${r.quantita_mancante}">Reintegra</button>`:''}</td></tr>`).join(''));$('#newReq').onclick=()=>reqModal();p.addEventListener('click',async e=>{const b=e.target.closest('[data-reintegra-art]');if(!b)return;await loadBase();const candidates=cache.lotti.filter(l=>l.articolo_id===b.dataset.reintegraArt);if(!candidates.length){toast('Prima crea un lotto per questo articolo.',true);return}movementModal({tipo:'TRASFERIMENTO',lotto_id:candidates[0].id,quantita:b.dataset.q,da:'MAG_CENTRALE',a:b.dataset.reintegraMezzo,causale:'Reintegro dotazione ambulanza'})},{once:true})}
+async function renderDotazioni(){
+ await loadBase();
+ const p=$('#page-dotazioni');
+ const rows=(await safe(sb.from('mag_reintegri').select('*').order('ubicazione'))).filter(r=>r.ubicazione_codice.startsWith('MEZZO_'));
+ let selectedCategory=null;
+ const activeCats=cache.categorie.filter(c=>c.attiva);
+ const catButtons=activeCats.map((c,i)=>`<button type="button" class="category-filter cat-${i%12}" data-cat="${c.id}">${esc(c.nome)}</button>`).join('');
+
+ p.innerHTML=pageHead('Dotazioni ambulanze','<button class="btn primary" id="newReq">+ Imposta dotazione minima</button>')+
+ `<div class="hint" style="margin-bottom:10px">Seleziona una categoria per visualizzare le dotazioni delle ambulanze.</div>
+ <div class="category-buttons">
+   <button type="button" class="category-filter" data-cat="all">Tutti</button>
+   ${catButtons}
+ </div>
+ <div id="dotazioniTable" class="article-table-hidden"></div>`;
+
+ const filtered=()=>{
+   if(!selectedCategory)return [];
+   if(selectedCategory==='all')return rows;
+   return rows.filter(r=>{
+     const art=cache.articoli.find(a=>a.id===r.articolo_id);
+     return art?.categoria_id===selectedCategory;
+   });
+ };
+
+ const draw=()=>{
+   const box=$('#dotazioniTable');
+   if(!selectedCategory){
+     box.classList.add('article-table-hidden');
+     box.innerHTML='';
+     return;
+   }
+   const data=filtered();
+   box.innerHTML=table(['Mezzo','Articolo','Minimo','Presente','Mancante',''],data.map(r=>`<tr><td><strong>${esc(r.ubicazione)}</strong></td><td>${esc(r.codice)} — ${esc(r.articolo)}</td><td>${fmt(r.quantita_minima)} ${esc(r.unita_misura)}</td><td>${fmt(r.quantita_attuale)}</td><td class="${Number(r.quantita_mancante)>0?'danger-text':'ok-text'}">${fmt(r.quantita_mancante)}</td><td>${Number(r.quantita_mancante)>0?`<button class="btn small primary" data-reintegra-art="${r.articolo_id}" data-reintegra-mezzo="${r.ubicazione_codice}" data-q="${r.quantita_mancante}">Reintegra</button>`:''}</td></tr>`).join(''));
+   box.classList.remove('article-table-hidden');
+ };
+
+ p.querySelectorAll('.category-filter').forEach(btn=>btn.addEventListener('click',()=>{
+   selectedCategory=btn.dataset.cat;
+   p.querySelectorAll('.category-filter').forEach(x=>x.classList.toggle('active',x===btn));
+   draw();
+ }));
+
+ $('#newReq').onclick=()=>reqModal();
+
+ p.addEventListener('click',async e=>{
+   const b=e.target.closest('[data-reintegra-art]');
+   if(!b)return;
+   await loadBase();
+   const candidates=cache.lotti.filter(l=>l.articolo_id===b.dataset.reintegraArt);
+   if(!candidates.length){toast('Prima crea un lotto per questo articolo.',true);return}
+   movementModal({tipo:'TRASFERIMENTO',lotto_id:candidates[0].id,quantita:b.dataset.q,da:'MAG_CENTRALE',a:b.dataset.reintegraMezzo,causale:'Reintegro dotazione ambulanza'});
+ });
+}
 function reqModal(){const mezzi=cache.ubicazioni.filter(u=>u.tipo==='MEZZO');const m=modal(`<h3>Dotazione minima</h3><form id="reqForm" class="grid-2"><label>Ambulanza<select name="ubicazione_codice" required>${mezzi.map(u=>`<option value="${u.codice}">${esc(u.nome)}</option>`).join('')}</select></label><label>Articolo<select name="articolo_id" required>${cache.articoli.filter(a=>a.attivo).map(a=>`<option value="${a.id}">${esc(a.codice)} — ${esc(a.nome)}</option>`).join('')}</select></label><label>Quantità minima<input name="quantita_minima" type="number" min="0" step="0.001" required></label><div class="modal-foot" style="grid-column:1/-1"><button type="button" class="btn ghost" data-close>Annulla</button><button class="btn primary">Salva</button></div></form>`);m.querySelector('#reqForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);const o=Object.fromEntries(f.entries());o.quantita_minima=Number(o.quantita_minima);try{await safe(sb.from('mag_dotazioni_minime').upsert(o,{onConflict:'ubicazione_codice,articolo_id'}));m.remove();toast('Dotazione aggiornata');renderDotazioni()}catch(er){toast(er.message,true)}}}
 
 async function renderInventario(){const p=$('#page-inventario');const inv=await safe(sb.from('mag_inventario').select('*').order('articolo'));p.innerHTML=pageHead('Inventario','<button class="btn ghost" id="csvInv">CSV</button><button class="btn ghost" onclick="window.print()">Stampa</button>')+table(['Codice','Articolo','Categoria','Lotto','Scadenza','Ubicazione','Quantità'],inv.map(x=>`<tr><td>${esc(x.codice)}</td><td>${esc(x.articolo)}</td><td>${esc(x.categoria||'')}</td><td>${esc(x.numero_lotto||'—')}</td><td>${dateIt(x.data_scadenza)}</td><td>${esc(x.ubicazione)}</td><td><strong>${fmt(x.quantita)} ${esc(x.unita_misura)}</strong></td></tr>`).join(''));$('#csvInv').onclick=()=>csv('inventario.csv',['Codice','Articolo','Categoria','Lotto','Scadenza','Ubicazione','Quantità','U.M.'],inv.map(x=>[x.codice,x.articolo,x.categoria||'',x.numero_lotto||'',x.data_scadenza||'',x.ubicazione,x.quantita,x.unita_misura]))}

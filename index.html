@@ -141,7 +141,17 @@ async function renderDashboard(){
   <div class="card metric"><div class="label">Scadenze 60 giorni</div><div class="value">${within(d60)}</div></div>
   <div class="card metric"><div class="label">Scadenze 90 giorni</div><div class="value">${within(d90)}</div></div>
   <div class="card metric ${missing?'danger':'good'}"><div class="label">Dotazioni da reintegrare</div><div class="value">${missing}</div></div></div>
-  <div class="panel"><h3>Movimenti recenti</h3>${table(['Data','Tipo','Articolo','Quantità','Causale'],mov.map(m=>`<tr><td>${new Date(m.creato_il).toLocaleString('it-IT')}</td><td><span class="tag">${esc(m.tipo)}</span></td><td>${esc(m.mag_lotti?.mag_articoli?.codice||'')} — ${esc(m.mag_lotti?.mag_articoli?.nome||'')}</td><td>${fmt(m.quantita)}</td><td>${esc(m.causale||'')}</td></tr>`).join(''))}</div>`;
+  <div class="panel">
+   <button class="btn secondary" id="toggleRecentMoves" type="button">⇄ Movimenti recenti</button>
+   <div id="recentMovesPanel" class="hidden" style="margin-top:14px">
+    ${table(['Data','Tipo','Articolo','Quantità','Causale'],mov.map(m=>`<tr><td>${new Date(m.creato_il).toLocaleString('it-IT')}</td><td><span class="tag">${esc(m.tipo)}</span></td><td>${esc(m.mag_lotti?.mag_articoli?.codice||'')} — ${esc(m.mag_lotti?.mag_articoli?.nome||'')}</td><td>${fmt(m.quantita)}</td><td>${esc(m.causale||'')}</td></tr>`).join(''))}
+   </div>
+  </div>`;
+ const toggle=$('#toggleRecentMoves'), box=$('#recentMovesPanel');
+ if(toggle&&box)toggle.onclick=()=>{
+   const hidden=box.classList.toggle('hidden');
+   toggle.textContent=hidden?'⇄ Movimenti recenti':'▲ Nascondi movimenti recenti';
+ };
 }
 
 async function renderArticoli(){

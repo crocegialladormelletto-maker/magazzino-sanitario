@@ -502,7 +502,8 @@ async function quickMovementModal(tipo){
       <label>Numero lotto<input name="numero_lotto" placeholder="Facoltativo"></label>
       <label>Data scadenza<input name="data_scadenza" type="date"></label>
     </div>
-    <label>Quantità<input name="quantita" type="number" min="1" step="1" required></label>
+    <label>Quantità da caricare<input name="quantita" type="number" min="1" step="1" required></label>
+    <label>Quantità minima di scorta<input name="scorta_minima_carico" type="number" min="0" step="1" value="0" required></label>
     <label>Destinazione<select name="destinazione" required>${locOptions('MAG_CENTRALE')}</select></label>
     <label>DA / Provenienza<select name="provenienza" required><option value="">— Seleziona —</option><option>Acquisto</option><option>Giacenza iniziale</option><option>Donazione</option><option>Restituzione</option><option>Trasferimento in entrata</option><option>Altro</option></select></label>
     <label style="grid-column:1/-1">Note / causale aggiuntiva<input name="causale" placeholder="Facoltativo: fornitore, riferimento documento, ecc."></label>`;
@@ -542,10 +543,12 @@ async function quickMovementModal(tipo){
     const lotSel=m.querySelector('#caricoLotto');
     const newFields=m.querySelector('#newLotFields');
     const newArticleFields=m.querySelector('#newArticleFields');
+    const minimum=m.querySelector('[name="scorta_minima_carico"]');
     wireArticleCode(newArticleFields,'nuovo_nome','nuovo_codice');
     const refreshLots=()=>{
       const artId=artSel.value;
       const isNew=artId==='__NEW_ARTICLE__';
+      minimum.value=isNew?'0':String(cache.articoli.find(a=>a.id===artId)?.scorta_minima??0);
       newArticleFields.classList.toggle('hidden',!isNew);
       for(const name of ['nuovo_codice','nuovo_nome','nuova_categoria','nuova_unita'])newArticleFields.querySelector(`[name="${name}"]`).required=isNew;
       if(isNew){lotSel.disabled=false;lotSel.innerHTML='<option value="__NEW__">＋ Nuovo lotto / senza lotto</option>';newFields.classList.remove('hidden');return;}
@@ -575,10 +578,12 @@ async function quickMovementModal(tipo){
     let lottoId=f.get('lotto');
 
     try{
+      const minCarico=tipo==='CARICO'?Number(f.get('scorta_minima_carico')):null;
+      if(tipo==='CARICO'&&(!Number.isInteger(minCarico)||minCarico<0)){toast('Indica una quantità minima valida.',true);return;}
       if(tipo==='CARICO' && lottoId==='__NEW__'){
         let artId=f.get('articolo');
         if(artId==='__NEW_ARTICLE__'){
-          const article={codice:String(f.get('nuovo_codice')||'').trim(),nome:String(f.get('nuovo_nome')||'').trim(),categoria_id:f.get('nuova_categoria'),unita_misura:String(f.get('nuova_unita')||'pz').trim(),attivo:true,solo_dotazione_ambulanze:false,scorta_minima:0};
+          const article={codice:String(f.get('nuovo_codice')||'').trim(),nome:String(f.get('nuovo_nome')||'').trim(),categoria_id:f.get('nuova_categoria'),unita_misura:String(f.get('nuova_unita')||'pz').trim(),attivo:true,solo_dotazione_ambulanze:false,scorta_minima:minCarico};
           if(!article.codice||!article.nome||!article.categoria_id||!article.unita_misura){toast('Compila nome, codice, categoria e unità di misura.',true);return}
           const created=await safe(sb.from('mag_articoli').insert(article).select('id').single());
           artId=created.id;
@@ -591,6 +596,9 @@ async function quickMovementModal(tipo){
         };
         const nuovo=await safe(sb.from('mag_lotti').insert(obj).select('id').single());
         lottoId=nuovo.id;
+      }
+      if(tipo==='CARICO'&&f.get('articolo')!=='__NEW_ARTICLE__'){
+        await safe(sb.from('mag_articoli').update({scorta_minima:minCarico}).eq('id',f.get('articolo')).eq('solo_dotazione_ambulanze',false));
       }
       const args={p_tipo:tipo,p_lotto_id:lottoId,p_quantita:Number(f.get('quantita')),p_da_ubicazione:origine,p_a_ubicazione:destinazione,p_causale:tipo==='CARICO' ? ('[DA: '+f.get('provenienza')+']'+(String(f.get('causale')||'').trim()?' '+String(f.get('causale')).trim():'')) : (f.get('causale')||null)};
       await safe(sb.rpc('mag_registra_movimento',args));

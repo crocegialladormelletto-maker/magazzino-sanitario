@@ -342,7 +342,7 @@ function makeArticleCode(name, excludeId=null){
  const descriptors=words.filter(w=>!/[0-9]/.test(w));
  const specs=words.filter(w=>/[0-9]/.test(w));
  const prefix=descriptors[0]==='GARZE' && descriptors[1]==='NON' && descriptors[2]?.startsWith('STERIL') ? 'GAR-NST' : descriptors.slice(0,2).map(w=>w.slice(0,3)).join('-');
- const base=prefix+(specs.length?' '+specs.join(' '):'');
+ const base=prefix==='GAR-NST' ? 'GAR-NST' : prefix+(specs.length?' '+specs.join(' '):'');
  const taken=new Set(cache.articoli.filter(a=>a.id!==excludeId).map(a=>String(a.codice||'').toUpperCase()));
  if(!taken.has(base))return base;
  for(let n=2;n<10000;n++){const candidate=base+'-'+String(n).padStart(3,'0');if(!taken.has(candidate))return candidate;}

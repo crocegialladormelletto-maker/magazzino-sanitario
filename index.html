@@ -337,14 +337,15 @@ async function renderArticoli(){
  };
 }
 function makeArticleCode(name, excludeId=null){
- const words=String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().match(/[A-Z0-9]+/g)||[];
+ const words=String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().match(/[A-Z0-9]+(?:X[0-9]+)?/g)||[];
  if(!words.length)return '';
- const first=words[0].slice(0,3);
- const specs=words.slice(1).filter(w=>/\d/.test(w)||/^(XS|S|M|L|XL|XXL)$/.test(w));
- const base=(first+(specs.length?'-'+specs.join('-'):'-001')).slice(0,45);
+ const descriptors=words.filter(w=>!/[0-9]/.test(w));
+ const specs=words.filter(w=>/[0-9]/.test(w));
+ const prefix=descriptors.slice(0,2).map(w=>w.slice(0,3)).join('-');
+ const base=prefix+(specs.length?' '+specs.join(' '):'');
  const taken=new Set(cache.articoli.filter(a=>a.id!==excludeId).map(a=>String(a.codice||'').toUpperCase()));
  if(!taken.has(base))return base;
- for(let n=2;n<10000;n++){const candidate=base.replace(/-001$/,'')+'-'+String(n).padStart(3,'0');if(!taken.has(candidate))return candidate;}
+ for(let n=2;n<10000;n++){const candidate=base+'-'+String(n).padStart(3,'0');if(!taken.has(candidate))return candidate;}
  return base+'-'+Date.now();
 }
 function wireArticleCode(form,nameKey,codeKey,excludeId=null){

@@ -458,8 +458,14 @@ async function quickMovementModal(tipo){
 
   let campi='';
   if(tipo==='CARICO'){
-    const articleOptions=cache.articoli.filter(a=>a.attivo).map(a=>`<option value="${a.id}">${esc(a.codice)} — ${esc(a.nome)}</option>`).join('');
-    campi=`<label>Articolo<select name="articolo" id="caricoArticolo" required><option value="">Seleziona…</option>${articleOptions}</select></label>
+    const articleOptions=cache.articoli.filter(a=>a.attivo&&!a.solo_dotazione_ambulanze).map(a=>`<option value="${a.id}">${esc(a.codice)} — ${esc(a.nome)}</option>`).join('');
+    campi=`<label>Articolo<select name="articolo" id="caricoArticolo" required><option value="">Seleziona…</option>${articleOptions}<option value="__NEW_ARTICLE__">＋ Inserisci nuovo articolo manualmente</option></select></label>
+    <div id="newArticleFields" class="grid-2 hidden" style="grid-column:1/-1">
+      <label>Codice nuovo articolo<input name="nuovo_codice" placeholder="Codice articolo"></label>
+      <label>Nome nuovo articolo<input name="nuovo_nome" placeholder="Nome articolo"></label>
+      <label>Categoria nuovo articolo<select name="nuova_categoria"><option value="">— Seleziona categoria —</option>${cache.categorie.filter(x=>x.attiva).map(x=>`<option value="${x.id}">${esc(x.nome)}</option>`).join('')}</select></label>
+      <label>Unità di misura<input name="nuova_unita" value="pz"></label>
+    </div>
     <label>Lotto<select name="lotto" id="caricoLotto" required disabled><option value="">Seleziona prima l’articolo…</option></select></label>
     <div id="newLotFields" class="grid-2 hidden" style="grid-column:1/-1">
       <label>Numero lotto<input name="numero_lotto" placeholder="Facoltativo"></label>
@@ -491,8 +497,13 @@ async function quickMovementModal(tipo){
     const artSel=m.querySelector('#caricoArticolo');
     const lotSel=m.querySelector('#caricoLotto');
     const newFields=m.querySelector('#newLotFields');
+    const newArticleFields=m.querySelector('#newArticleFields');
     const refreshLots=()=>{
       const artId=artSel.value;
+      const isNew=artId==='__NEW_ARTICLE__';
+      newArticleFields.classList.toggle('hidden',!isNew);
+      for(const name of ['nuovo_codice','nuovo_nome','nuova_categoria','nuova_unita'])newArticleFields.querySelector(`[name="${name}"]`).required=isNew;
+      if(isNew){lotSel.disabled=false;lotSel.innerHTML='<option value="__NEW__">＋ Nuovo lotto / senza lotto</option>';newFields.classList.remove('hidden');return;}
       if(!artId){
         lotSel.disabled=true;
         lotSel.innerHTML='<option value="">Seleziona prima l’articolo…</option>';
@@ -520,7 +531,13 @@ async function quickMovementModal(tipo){
 
     try{
       if(tipo==='CARICO' && lottoId==='__NEW__'){
-        const artId=f.get('articolo');
+        let artId=f.get('articolo');
+        if(artId==='__NEW_ARTICLE__'){
+          const article={codice:String(f.get('nuovo_codice')||'').trim(),nome:String(f.get('nuovo_nome')||'').trim(),categoria_id:f.get('nuova_categoria'),unita_misura:String(f.get('nuova_unita')||'pz').trim(),attivo:true,solo_dotazione_ambulanze:false,scorta_minima:0};
+          if(!article.codice||!article.nome||!article.categoria_id||!article.unita_misura){toast('Compila nome, codice, categoria e unità di misura.',true);return}
+          const created=await safe(sb.from('mag_articoli').insert(article).select('id').single());
+          artId=created.id;
+        }
         const obj={
           articolo_id:artId,
           numero_lotto:(f.get('numero_lotto')||'').trim()||null,

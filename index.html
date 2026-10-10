@@ -448,10 +448,31 @@ async function renderMovimenti(){
          <h2 style="font-size:22px">${label}</h2>
          <button class="btn ${cls}" id="newSelectedMov">+ Nuovo ${label.toLowerCase()}</button>
        </div>
-       ${table(['Data','Tipo','Articolo / lotto','Da','A','Quantità','Causale'],data.map(m=>`<tr><td>${new Date(m.creato_il).toLocaleString('it-IT')}</td><td><span class="tag">${esc(m.tipo)}</span></td><td>${esc(m.mag_lotti?.mag_articoli?.codice||'')} — ${esc(m.mag_lotti?.mag_articoli?.nome||'')}<br><span class="hint">Lotto ${esc(m.mag_lotti?.numero_lotto||'—')}</span></td><td>${esc(caricoProvenienza(m)||loc[m.da_ubicazione]||'—')}</td><td>${esc(loc[m.a_ubicazione]||'—')}</td><td>${fmt(m.quantita)} ${esc(m.mag_lotti?.mag_articoli?.unita_misura||'')}</td><td>${esc(m.causale||'')}</td></tr>`).join(''))}
+       ${table(['Data','Tipo','Articolo / lotto','Da','A','Quantità','Causale'],data.map(m=>`<tr><td>${new Date(m.creato_il).toLocaleString('it-IT')}</td><td><span class="tag">${esc(m.tipo)}</span></td><td>${esc(m.mag_lotti?.mag_articoli?.codice||'')} — ${esc(m.mag_lotti?.mag_articoli?.nome||'')}<br><span class="hint">Lotto ${esc(m.mag_lotti?.numero_lotto||'—')}</span></td><td>${esc(caricoProvenienza(m)||loc[m.da_ubicazione]||'—')}${selectedType==='CARICO'?` <button type="button" class="btn small ghost" data-edit-provenienza="${m.id}">${caricoProvenienza(m)?'Modifica':'＋ Inserisci'}</button>`:''}</td><td>${esc(loc[m.a_ubicazione]||'—')}</td><td>${fmt(m.quantita)} ${esc(m.mag_lotti?.mag_articoli?.unita_misura||'')}</td><td>${esc(m.causale||'')}</td></tr>`).join(''))}
      </div>`;
    box.classList.remove('hidden');
    $('#newSelectedMov').onclick=()=>quickMovementModal(selectedType);
+   box.querySelectorAll('[data-edit-provenienza]').forEach(btn=>btn.onclick=()=>{
+     const item=mov.find(x=>x.id===btn.dataset.editProvenienza);
+     if(!item)return;
+     const options=['Acquisto','Giacenza iniziale','Donazione','Restituzione','Trasferimento in entrata','Altro'];
+     const current=caricoProvenienza(item)||'';
+     const dialog=modal(`<h3>Provenienza del carico</h3><p class="hint">Articolo: ${esc(item.mag_lotti?.mag_articoli?.nome||'')} — modifica soltanto il campo DA, senza cambiare quantità e giacenze.</p><form id="editProvenienzaForm" class="stack"><label>DA / Provenienza<select name="provenienza" required><option value="">— Seleziona —</option>${options.map(x=>`<option value="${esc(x)}" ${current===x?'selected':''}>${esc(x)}</option>`).join('')}</select></label><div class="modal-foot"><button type="button" class="btn ghost" data-close>Annulla</button><button type="submit" class="btn primary">Salva provenienza</button></div></form>`);
+     dialog.querySelector('#editProvenienzaForm').onsubmit=async e=>{
+       e.preventDefault();
+       const val=new FormData(e.target).get('provenienza');
+       if(!options.includes(val)){toast('Scegli una provenienza valida.',true);return;}
+       const newCausale='[DA: '+val+']'+(caricoCausale(item)?' '+caricoCausale(item):'');
+       try{
+         const updated=await safe(sb.from('mag_movimenti').update({causale:newCausale}).eq('id',item.id).select('id,causale').single());
+         if(!updated||updated.causale!==newCausale)throw new Error('Salvataggio non confermato');
+         item.causale=newCausale;
+         dialog.remove();
+         toast('Provenienza salvata');
+         draw();
+       }catch(er){toast(er.message||'Impossibile aggiornare la provenienza',true);}
+     };
+   });
  };
 
  p.querySelectorAll('[data-movtype]').forEach(btn=>btn.addEventListener('click',()=>{

@@ -186,7 +186,7 @@ async function renderDashboard(){
  };
 
  $('#page-dashboard').innerHTML=pageHead('Dashboard')+`<div class="cards">
-  <div class="card metric kpi-blue"><div class="label">Articoli attivi</div><div class="value">${cache.articoli.filter(a=>a.attivo).length}</div></div>
+  <div class="card metric kpi-blue"><div class="label">Articoli attivi</div><div class="value">${cache.articoli.filter(a=>a.attivo&&!a.solo_dotazione_ambulanze).length}</div></div>
   <div class="card metric kpi-cyan"><div class="label">Unità complessive</div><div class="value">${fmt(inv.reduce((s,x)=>s+Number(x.quantita||0),0))}</div></div>
   <div class="card metric kpi-orange"><div class="label">Sotto scorta</div><div class="value">${low}</div></div>
   <div class="card metric kpi-red"><div class="label">Lotti scaduti</div><div class="value">${expired}</div></div>
@@ -240,7 +240,7 @@ async function renderDashboard(){
 async function renderArticoli(){
  await loadBase();
  const p=$('#page-articoli');
- const warehouseArticles=cache.articoli;
+ const warehouseArticles=cache.articoli.filter(a=>!a.solo_dotazione_ambulanze);
  let selectedCategory=null;
  const activeCats=cache.categorie.filter(c=>c.attiva);
  const catButtons=activeCats.map((c,i)=>`<button type="button" class="category-filter cat-${i%12}" data-cat="${c.id}">${esc(c.nome)}</button>`).join('');
@@ -341,7 +341,7 @@ function catModal(c={}){const m=modal(`<h3>${c.id?'Modifica':'Nuova'} categoria<
 async function renderLotti(){
  await loadBase();
  const p=$('#page-lotti');
- const warehouseLots=cache.lotti;
+ const warehouseLots=cache.lotti.filter(l=>!cache.articoli.find(a=>a.id===l.articolo_id)?.solo_dotazione_ambulanze);
  let selectedCategory=null;
  const activeCats=cache.categorie.filter(c=>c.attiva);
  const catButtons=activeCats.map((c,i)=>`<button type="button" class="category-filter cat-${i%12}" data-cat="${c.id}">${esc(c.nome)}</button>`).join('');
@@ -662,7 +662,7 @@ function reqModal(){const mezzi=cache.ubicazioni.filter(u=>u.tipo==='MEZZO');con
 async function renderInventario(){
  await loadBase();
  const p=$('#page-inventario');
- const inv=await safe(sb.from('mag_inventario').select('*').order('articolo'));
+ const inv=(await safe(sb.from('mag_inventario').select('*').order('articolo'))).filter(x=>x.ubicazione_codice==='MAG_CENTRALE'||x.ubicazione==='Magazzino centrale');
  let selectedCategory=null;
  const activeCats=cache.categorie.filter(c=>c.attiva);
  const catButtons=activeCats.map((c,i)=>`<button type="button" class="category-filter cat-${i%12}" data-cat="${c.id}">${esc(c.nome)}</button>`).join('');

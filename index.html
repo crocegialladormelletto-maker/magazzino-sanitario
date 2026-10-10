@@ -346,7 +346,9 @@ function makeArticleCode(name, excludeId=null){
  const color=descriptors.find(w=>colors.has(w));
  const colorCodes={ARANCIONE:'ARA',ARANCIA:'ARA',VERDE:'VER',BLU:'BLU',ROSSO:'ROS',ROSSA:'ROS',GIALLO:'GIA',GIALLA:'GIA',BIANCO:'BIA',BIANCA:'BIA',NERO:'NER',NERA:'NER',VIOLA:'VIO',ROSA:'ROS',GRIGIO:'GRI',GRIGIA:'GRI',AZZURRO:'AZZ',AZZURRA:'AZZ',MARRONE:'MAR',BEIGE:'BEI',TRASPARENTE:'TRA'};
  const colorSuffix=color?'-'+colorCodes[color]:'';
- const base=prefix==='GAR-NST' ? 'GAR-NST' : prefix+colorSuffix+(specs.length?' '+specs.join(' '):'');
+ const use=descriptors.some(w=>/^NEONATAL/.test(w))?'NEO':descriptors.some(w=>/^PEDIATRIC/.test(w)||w==='BAMBINO'||w==='BAMBINA')?'PED':descriptors.some(w=>/^ADULT/.test(w))?'ADU':'';
+ const useSuffix=use?'-'+use:'';
+ const base=prefix==='GAR-NST' ? 'GAR-NST' : prefix+colorSuffix+useSuffix+(specs.length?' '+specs.join(' '):'');
  const taken=new Set(cache.articoli.filter(a=>a.id!==excludeId).map(a=>String(a.codice||'').toUpperCase()));
  if(!taken.has(base))return base;
  for(let n=2;n<10000;n++){const candidate=base+'-'+String(n).padStart(3,'0');if(!taken.has(candidate))return candidate;}

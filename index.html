@@ -500,7 +500,7 @@ async function quickMovementModal(tipo){
     const lotOptions=availableLots.map(l=>`<option value="${l.id}">${esc(l.mag_articoli?.codice||'')} — ${esc(l.mag_articoli?.nome||'')} | lotto ${esc(l.numero_lotto||'—')} | disponibile ${fmt(qtyByLot[l.id]||0)}</option>`).join('');
     const noStock=!availableLots.length?'<option value="">Nessun materiale disponibile</option>':'<option value="">Seleziona…</option>';
     if(tipo==='SCARICO'){
-      campi=`<label>Articolo / lotto<select name="lotto" required ${!availableLots.length?'disabled':''}>${noStock}${lotOptions}</select></label>
+      campi=`<label style="grid-column:1/-1">Cerca articolo per nome o codice<input type="search" id="scaricoRicerca" autocomplete="off" placeholder="Es. garze, GAR-STE, guanti…"></label><label>Articolo / lotto<select id="scaricoLotto" name="lotto" required ${!availableLots.length?'disabled':''}>${noStock}${lotOptions}</select></label>
       <label>Quantità<input name="quantita" type="number" min="1" step="1" required></label>
       <label>Origine<select name="origine" required>${locOptions('MAG_CENTRALE')}</select></label>
       <label>Causale<input name="causale" placeholder="Es. consumo, utilizzo, materiale prelevato"></label>`;
@@ -515,6 +515,18 @@ async function quickMovementModal(tipo){
 
   const m=modal(`<h3>${cfg.titolo}</h3><p class="hint">${cfg.testo}</p><form id="quickMovForm" class="grid-2">${campi}<div class="modal-foot" style="grid-column:1/-1"><button type="button" class="btn ghost" data-close>Annulla</button><button class="btn ${cfg.classe}" type="submit">Conferma ${cfg.titolo.toLowerCase()}</button></div></form>`);
 
+  if(tipo==='SCARICO'){
+    const search=m.querySelector('#scaricoRicerca');
+    const select=m.querySelector('#scaricoLotto');
+    const original=availableLots.map(l=>({id:l.id, name:(l.mag_articoli?.nome||''), code:(l.mag_articoli?.codice||''),lot:l.numero_lotto||'',available:qtyByLot[l.id]||0}));
+    search.addEventListener('input',()=>{
+      const q=search.value.trim().toLocaleLowerCase('it');
+      const hits=original.filter(x=>(x.name+' '+x.code+' '+x.lot).toLocaleLowerCase('it').includes(q));
+      const previous=select.value;
+      select.innerHTML='<option value="">'+(hits.length?'Seleziona articolo…':'Nessun articolo trovato')+'</option>'+hits.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.code)+' — '+esc(x.name)+' | lotto '+esc(x.lot||'—')+' | disponibile '+fmt(x.available)+'</option>').join('');
+      if(hits.some(x=>x.id===previous))select.value=previous;
+    });
+  }
   if(tipo==='CARICO'){
     const artSel=m.querySelector('#caricoArticolo');
     const lotSel=m.querySelector('#caricoLotto');

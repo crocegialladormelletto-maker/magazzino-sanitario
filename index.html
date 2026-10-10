@@ -490,7 +490,7 @@ async function quickMovementModal(tipo){
   let campi='';
   if(tipo==='CARICO'){
     const articleOptions=cache.articoli.filter(a=>a.attivo&&!a.solo_dotazione_ambulanze).map(a=>`<option value="${a.id}">${esc(a.codice)} — ${esc(a.nome)}</option>`).join('');
-    campi=`<label>Articolo<select name="articolo" id="caricoArticolo" required><option value="">Seleziona…</option>${articleOptions}<option value="__NEW_ARTICLE__">＋ Inserisci nuovo articolo manualmente</option></select></label>
+    campi=`<label>Articolo<select name="articolo" id="caricoArticolo" required><option value="">Seleziona…</option><option value="__NEW_ARTICLE__">＋ Inserisci nuovo articolo manualmente</option>${articleOptions}</select></label>
     <div id="newArticleFields" class="grid-2 hidden" style="grid-column:1/-1">
       <label>Codice nuovo articolo<input name="nuovo_codice" placeholder="Codice articolo"></label>
       <label>Nome nuovo articolo<input name="nuovo_nome" placeholder="Nome articolo"></label>

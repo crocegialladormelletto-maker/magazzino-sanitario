@@ -342,7 +342,11 @@ function makeArticleCode(name, excludeId=null){
  const descriptors=words.filter(w=>!/[0-9]/.test(w));
  const specs=words.filter(w=>/[0-9]/.test(w));
  const prefix=descriptors[0]==='GARZE' && descriptors[1]==='NON' && descriptors[2]?.startsWith('STERIL') ? 'GAR-NST' : descriptors.slice(0,2).map(w=>w.slice(0,3)).join('-');
- const base=prefix==='GAR-NST' ? 'GAR-NST' : prefix+(specs.length?' '+specs.join(' '):'');
+ const colors=new Set(['ARANCIONE','ARANCIA','VERDE','BLU','ROSSO','ROSSA','GIALLO','GIALLA','BIANCO','BIANCA','NERO','NERA','VIOLA','ROSA','GRIGIO','GRIGIA','AZZURRO','AZZURRA','MARRONE','BEIGE','TRASPARENTE']);
+ const color=descriptors.find(w=>colors.has(w));
+ const colorCodes={ARANCIONE:'ARA',ARANCIA:'ARA',VERDE:'VER',BLU:'BLU',ROSSO:'ROS',ROSSA:'ROS',GIALLO:'GIA',GIALLA:'GIA',BIANCO:'BIA',BIANCA:'BIA',NERO:'NER',NERA:'NER',VIOLA:'VIO',ROSA:'ROS',GRIGIO:'GRI',GRIGIA:'GRI',AZZURRO:'AZZ',AZZURRA:'AZZ',MARRONE:'MAR',BEIGE:'BEI',TRASPARENTE:'TRA'};
+ const colorSuffix=color?'-'+colorCodes[color]:'';
+ const base=prefix==='GAR-NST' ? 'GAR-NST' : prefix+colorSuffix+(specs.length?' '+specs.join(' '):'');
  const taken=new Set(cache.articoli.filter(a=>a.id!==excludeId).map(a=>String(a.codice||'').toUpperCase()));
  if(!taken.has(base))return base;
  for(let n=2;n<10000;n++){const candidate=base+'-'+String(n).padStart(3,'0');if(!taken.has(candidate))return candidate;}

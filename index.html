@@ -789,7 +789,8 @@ async function renderInventario(){
      return;
    }
    const data=filtered();
-   box.innerHTML=table(['Codice','Articolo','Categoria','Lotto','Scadenza','Ubicazione','Quantità'],data.map(x=>`<tr><td>${esc(x.codice)}</td><td>${esc(x.articolo)}</td><td>${esc(x.categoria||'')}</td><td>${esc(x.numero_lotto||'—')}</td><td>${dateIt(x.data_scadenza)}</td><td>${esc(x.ubicazione)}</td><td><strong>${fmt(x.quantita)} ${esc(x.unita_misura)}</strong></td></tr>`).join(''));
+   box.innerHTML=table(['Codice','Articolo','Categoria','Lotto','Scadenza','Ubicazione','Quantità','Azioni'],data.map((x,i)=>`<tr><td>${esc(x.codice)}</td><td>${esc(x.articolo)}</td><td>${esc(x.categoria||'')}</td><td>${esc(x.numero_lotto||'—')}</td><td>${dateIt(x.data_scadenza)}</td><td>${esc(x.ubicazione)}</td><td><strong>${fmt(x.quantita)} ${esc(x.unita_misura)}</strong></td><td><button type="button" class="btn small ghost" data-fix-qty="${i}">Correggi quantità</button></td></tr>`).join(''));
+   box.querySelectorAll('[data-fix-qty]').forEach(btn=>btn.onclick=()=>correctInventoryQuantity(data[Number(btn.dataset.fixQty)]));
    box.classList.remove('article-table-hidden');
  };
 
@@ -803,6 +804,42 @@ async function renderInventario(){
    if(!selectedCategory){toast('Seleziona prima una categoria',true);return}
    const data=filtered();
    csv('inventario.csv',['Codice','Articolo','Categoria','Lotto','Scadenza','Ubicazione','Quantità','U.M.'],data.map(x=>[x.codice,x.articolo,x.categoria||'',x.numero_lotto||'',x.data_scadenza||'',x.ubicazione,x.quantita,x.unita_misura]));
+ };
+}
+
+async function correctInventoryQuantity(item){
+ if(!item||!item.lotto_id){toast('Lotto non identificato: impossibile correggere la quantità.',true);return;}
+ const previous=Number(item.quantita||0);
+ const loc=item.ubicazione_codice||'MAG_CENTRALE';
+ const dialog=modal(`<h3>Correggi quantità</h3>
+ <p><strong>${esc(item.codice||'')} — ${esc(item.articolo||'')}</strong><br><span class="hint">Lotto ${esc(item.numero_lotto||'—')} · ${esc(item.ubicazione||'Magazzino centrale')}</span></p>
+ <form id="correctQtyForm" class="stack">
+ <div>Quantità attuale: <strong>${fmt(previous)} ${esc(item.unita_misura||'')}</strong></div>
+ <label>Quantità corretta<input name="quantita_corretta" type="number" min="0" step="1" required value="${previous}"></label>
+ <label>Motivo della correzione<textarea name="motivo" required placeholder="Es. quantità inserita errata nel carico iniziale"></textarea></label>
+ <div class="hint">La differenza sarà registrata come rettifica di inventario, non come acquisto o consumo.</div>
+ <div class="modal-foot"><button type="button" class="btn ghost" data-close>Annulla</button><button type="submit" class="btn primary">Conferma correzione</button></div>
+ </form>`);
+ dialog.querySelector('#correctQtyForm').onsubmit=async e=>{
+  e.preventDefault();
+  const form=e.target;
+  const next=Number(new FormData(form).get('quantita_corretta'));
+  const motivo=String(new FormData(form).get('motivo')||'').trim();
+  if(!Number.isSafeInteger(next)||next<0||!motivo){toast('Inserisci una quantità intera valida e il motivo.',true);return;}
+  const button=form.querySelector('[type="submit"]');button.disabled=true;
+  try{
+   const rows=await safe(sb.from('mag_inventario').select('*').eq('lotto_id',item.lotto_id).eq('ubicazione_codice',loc));
+   if(rows.length!==1)throw new Error('Giacenza non identificata univocamente: aggiornare l’inventario.');
+   const current=Number(rows[0].quantita||0);
+   if(current!==previous)throw new Error('La giacenza è cambiata. Riapri l’inventario prima di correggerla.');
+   const delta=next-current;
+   if(delta===0){dialog.remove();toast('La quantità è già corretta.');return;}
+   if(!confirm(`Confermi la correzione da ${current} a ${next} ${item.unita_misura||''}?\\nLa variazione sarà registrata nello storico.`))return;
+   const args={p_tipo:delta>0?'RETTIFICA_POSITIVA':'RETTIFICA_NEGATIVA',p_lotto_id:item.lotto_id,p_quantita:Math.abs(delta),p_da_ubicazione:delta<0?loc:null,p_a_ubicazione:delta>0?loc:null,p_causale:`Correzione quantità inserita errata: ${current} → ${next}. Motivo: ${motivo}`};
+   await safe(sb.rpc('mag_registra_movimento',args));
+   dialog.remove();toast('Quantità corretta e rettifica registrata.');await renderInventario();
+  }catch(err){toast(err.message||'Impossibile correggere la quantità',true);}
+  finally{button.disabled=false;}
  };
 }
 

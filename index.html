@@ -162,7 +162,32 @@ async function boot(){
  await loadBase(); await showPage('dashboard');
 }
 $('#loginEmail').value=RESPONSABILE_EMAIL;
-$('#loginForm').addEventListener('submit',async e=>{e.preventDefault();$('#loginMsg').textContent='Accesso in corso…';const {data,error}=await sb.auth.signInWithPassword({email:RESPONSABILE_EMAIL,password:$('#loginPassword').value});if(error){$('#loginMsg').textContent='Credenziali non valide oppure account non ancora attivato.';return}session=data.session;const ok=await checkAuthorized();if(!ok){await sb.auth.signOut();$('#loginMsg').textContent='Account non autorizzato.';return}$('#loginMsg').textContent='';boot()});
+$('#loginForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ const msg=$('#loginMsg'),btn=$('#loginForm button[type="submit"]');
+ msg.textContent='Verifica credenziali in corso…';
+ btn.disabled=true;
+ try{
+  const {data,error}=await sb.auth.signInWithPassword({email:RESPONSABILE_EMAIL,password:$('#loginPassword').value});
+  if(error)throw error;
+  session=data.session;
+  msg.textContent='Accesso riconosciuto. Apertura gestionale…';
+  const ok=await checkAuthorized();
+  if(!ok){msg.textContent='Account non abilitato alla gestione magazzino. Contattare amministrazione.';return}
+  $('#loginView').classList.add('hidden');
+  $('#appView').classList.remove('hidden');
+  $('#userLabel').textContent=session?.user?.email||'Responsabile';
+  try{await loadBase();await showPage('dashboard')}
+  catch(loadError){
+   console.error('Errore inizializzazione magazzino:',loadError);
+   msg.textContent='Accesso effettuato, ma caricamento non riuscito: '+(loadError.message||String(loadError));
+   $('#loginView').classList.remove('hidden');$('#appView').classList.add('hidden');
+  }
+ }catch(err){
+  console.error('Errore login:',err);
+  msg.textContent='Accesso non riuscito: '+(err.message||String(err));
+ }finally{btn.disabled=false}
+});
 $('#activateBtn').addEventListener('click',async()=>{const pw=$('#loginPassword').value;if(!pw||pw.length<8){$('#loginMsg').textContent='Per il primo accesso inserisci una password di almeno 8 caratteri.';return}$('#loginMsg').textContent='Attivazione account in corso…';const {data,error}=await sb.auth.signUp({email:RESPONSABILE_EMAIL,password:pw,options:{emailRedirectTo:location.href.split('#')[0].split('?')[0]}});if(error){$('#loginMsg').textContent=error.message||'Impossibile attivare l’account.';return}if(data.session){$('#loginMsg').textContent='Account attivato. Accesso in corso…';boot()}else{$('#loginMsg').textContent='Controlla la casella email del Magazzino Sanitario e conferma l’attivazione. Dopo la conferma torna su questa pagina e accedi.';}});
 $('#logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload()};
 

@@ -97,6 +97,7 @@
       <nav class="sidebar" id="nav"></nav>
       <main class="content">
         <section id="page-dashboard" class="page"></section>
+        <section id="page-vestiario" class="page hidden"></section>
         <section id="page-articoli" class="page hidden"></section>
         <section id="page-categorie" class="page hidden"></section>
         <section id="page-lotti" class="page hidden"></section>
@@ -123,7 +124,7 @@ const fmt=n=>Number(n||0).toLocaleString('it-IT',{maximumFractionDigits:3});
 const dateIt=d=>d?new Date(d+'T12:00:00').toLocaleDateString('it-IT'):'—';
 let session=null; let currentPage='dashboard'; let dashboardTargetFilter=null; let cache={categorie:[],articoli:[],ubicazioni:[],lotti:[]};
 
-const navItems=[['dashboard','Dashboard','▦'],['articoli','Articoli','▤'],['categorie','Categorie','◫'],['lotti','Lotti','◷'],['movimenti','Movimenti','⇄'],['scadenze','Scadenze','!'],['dotazioni','Dotazioni ambulanze','✚'],['inventario','Inventario','▧'],['riordino','Riordino','☑'],['impostazioni','Impostazioni','⚙']];
+const navItems=[['dashboard','Dashboard','▦'],['articoli','Articoli','▤'],['categorie','Categorie','◫'],['lotti','Lotti','◷'],['movimenti','Movimenti','⇄'],['scadenze','Scadenze','!'],['dotazioni','Dotazioni ambulanze','✚'],['inventario','Inventario','▧'],['riordino','Riordino','☑'],['vestiario','Vestiario','♧'],['impostazioni','Impostazioni','⚙']];
 $('#nav').innerHTML=navItems.map(([id,l,ic])=>`<button class="nav-btn ${id==='dashboard'?'active':''}" data-page="${id}"><span>${ic}</span>${l}</button>`).join('');
 $('#nav').addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(b){dashboardTargetFilter=null;showPage(b.dataset.page)}});
 
@@ -159,7 +160,7 @@ async function loadBase(){
    safe(sb.from('mag_lotti').select('*,mag_articoli(codice,nome,unita_misura)').order('data_scadenza',{ascending:true,nullsFirst:false}))
  ]); cache={categorie,articoli,ubicazioni,lotti};
 }
-async function showPage(id){currentPage=id;$$('.page').forEach(x=>x.classList.add('hidden'));$('#page-'+id).classList.remove('hidden');$$('.nav-btn').forEach(x=>x.classList.toggle('active',x.dataset.page===id));try{await ({dashboard:renderDashboard,articoli:renderArticoli,categorie:renderCategorie,lotti:renderLotti,movimenti:renderMovimenti,scadenze:renderScadenze,dotazioni:renderDotazioni,inventario:renderInventario,riordino:renderRiordino,impostazioni:renderImpostazioni}[id]||renderDashboard)()}catch(e){console.error(e);toast(e.message||'Errore',true)}}
+async function showPage(id){currentPage=id;$$('.page').forEach(x=>x.classList.add('hidden'));$('#page-'+id).classList.remove('hidden');$$('.nav-btn').forEach(x=>x.classList.toggle('active',x.dataset.page===id));try{await ({dashboard:renderDashboard,articoli:renderArticoli,categorie:renderCategorie,lotti:renderLotti,movimenti:renderMovimenti,scadenze:renderScadenze,dotazioni:renderDotazioni,inventario:renderInventario,riordino:renderRiordino,vestiario:renderVestiario,impostazioni:renderImpostazioni}[id]||renderDashboard)()}catch(e){console.error(e);toast(e.message||'Errore',true)}}
 
 async function renderDashboard(){
  await loadBase();
@@ -990,6 +991,49 @@ async function renderRiordino(){
    });
    csv('riordino.csv',['Codice','Articolo','U.M.','Giacenza','Scorta minima','Da ordinare','Fornitore','Note','Ordinato'],data);
  };
+}
+
+
+async function renderVestiario(){
+ const [stock,moves]=await Promise.all([
+  safe(sb.from('mag_vestiario').select('*').order('articolo').order('taglia')),
+  safe(sb.from('mag_vestiario_movimenti').select('*').order('creato_il',{ascending:false}).limit(80))
+ ]);
+ const p=$('#page-vestiario');
+ const available=(stock||[]).reduce((sum,x)=>sum+Number(x.quantita||0),0);
+ p.innerHTML=pageHead('Vestiario','Gestione separata delle divise · Giacca, Pantalone e T-Shirt')+`
+ <div class="panel"><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+ <img alt="Logo Croce Gialla Emergenza ODV" src="https://primary.jwwb.nl/public/s/b/j/temp-jdsqfuxejozahvwvidxb/logo-ridimensionato-no-sfondo-high.png?enable=upscale&amp;enable-io=true&amp;height=240" style="width:86px;height:86px;object-fit:contain">
+ <div><h3>Magazzino vestiario</h3><p class="hint">Capi in giacenza: <strong>${available}</strong>. Separato dal materiale sanitario.</p></div></div></div>
+ <div class="panel"><h3>Registra movimento</h3>
+ <div class="grid-2">
+ <label>Operazione<select id="vesTipo"><option value="CARICO">Carico</option><option value="CONSEGNA">Consegna</option><option value="RESTITUZIONE">Restituzione</option></select></label>
+ <label>Articolo<select id="vesArt"><option>Giacca</option><option>Pantalone</option><option>T-Shirt</option></select></label>
+ <label>Taglia<select id="vesTag"><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>3XL</option><option>4XL</option></select></label>
+ <label>Stato del capo<select id="vesCond"><option>Nuovo</option><option>Usato idoneo</option><option>Da lavare</option><option>Da riparare</option><option>Da dismettere</option></select></label>
+ <label>Quantità<input type="number" id="vesQty" min="1" step="1" value="1"></label>
+ <label>Nominativo destinatario / restitutore<input id="vesNome" placeholder="Nome e cognome"></label>
+ <label>Badge (facoltativo)<input id="vesBadge" placeholder="Numero badge"></label>
+ <label>Note<input id="vesNote" placeholder="Dettagli consegna o restituzione"></label>
+ </div><p class="hint">Per consegne e restituzioni indicare il nominativo. Il materiale consegnato viene scalato dalla giacenza.</p>
+ <button type="button" class="btn primary" id="vesSave">Salva movimento</button></div>
+ <div class="panel"><h3>Giacenze per articolo, taglia e stato</h3><div class="table-wrap"><table><thead><tr><th>Articolo</th><th>Taglia</th><th>Stato</th><th>Disponibili</th><th>Minima</th></tr></thead><tbody>${(stock||[]).map(x=>`<tr><td>${esc(x.articolo)}</td><td>${esc(x.taglia)}</td><td>${esc(x.condizione)}</td><td>${esc(x.quantita)}</td><td><input type="number" min="0" step="1" style="max-width:90px" data-ves-min="${x.id}" value="${Number(x.minima||0)}"></td></tr>`).join('')||'<tr><td colspan="5">Nessun capo caricato. Registra il primo carico.</td></tr>'}</tbody></table></div></div>
+ <div class="panel"><h3>Ultimi movimenti</h3><div class="table-wrap"><table><thead><tr><th>Data</th><th>Operazione</th><th>Articolo</th><th>Taglia</th><th>Q.tà</th><th>Persona</th></tr></thead><tbody>${(moves||[]).map(x=>`<tr><td>${esc(new Date(x.creato_il).toLocaleString('it-IT'))}</td><td>${esc(x.tipo)}</td><td>${esc(x.articolo)}</td><td>${esc(x.taglia)}</td><td>${esc(x.quantita)}</td><td>${esc(x.nominativo||'—')}</td></tr>`).join('')||'<tr><td colspan="6">Nessun movimento registrato.</td></tr>'}</tbody></table></div></div>`;
+ $('#vesSave').onclick=async()=>{
+  const tipo=$('#vesTipo').value,qty=Number($('#vesQty').value),nome=$('#vesNome').value.trim();
+  if(!Number.isInteger(qty)||qty<=0){toast('Inserire una quantità valida',true);return}
+  if(tipo!=='CARICO'&&!nome){toast('Inserire il nominativo',true);return}
+  const b=$('#vesSave');b.disabled=true;
+  try{
+   await safe(sb.rpc('mag_registra_vestiario',{p_articolo:$('#vesArt').value,p_taglia:$('#vesTag').value,p_condizione:$('#vesCond').value,p_tipo:tipo,p_quantita:qty,p_nominativo:nome,p_badge:$('#vesBadge').value,p_note:$('#vesNote').value}));
+   toast('Movimento vestiario registrato');await renderVestiario();
+  }catch(e){toast(e.message,true);b.disabled=false}
+ };
+ p.querySelectorAll('[data-ves-min]').forEach(x=>x.onchange=async()=>{
+  const n=Number(x.value);if(!Number.isInteger(n)||n<0){toast('Scorta minima non valida',true);return}
+  try{await safe(sb.from('mag_vestiario').update({minima:n}).eq('id',Number(x.dataset.vesMin)));toast('Scorta minima aggiornata')}
+  catch(e){toast(e.message,true);await renderVestiario()}
+ });
 }
 
 async function renderImpostazioni(){const p=$('#page-impostazioni');const s=(await safe(sb.from('mag_impostazioni').select('*').eq('id','principale').maybeSingle()))||{};p.innerHTML=pageHead('Impostazioni')+`<div class="grid-2"><div class="panel"><h3>Logo ufficiale</h3><img id="logoPreview" src="${s.logo_path?`${SUPABASE_URL}/storage/v1/object/public/magazzino-assets/${s.logo_path}`:'https://primary.jwwb.nl/public/s/b/j/temp-jdsqfuxejozahvwvidxb/logo-ridimensionato-no-sfondo-high.png?enable=upscale&enable-io=true&height=240'}" style="width:170px;height:170px;object-fit:contain;border:1px solid var(--line);border-radius:50%;background:white"><p class="hint">Il logo incluso nell'app è quello ufficiale fornito. Puoi sostituirlo qui e renderlo condiviso su tutti i dispositivi.</p><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp"><button class="btn primary" id="uploadLogo" style="margin-top:10px">Carica logo</button></div><div class="panel"><h3>Sicurezza accesso</h3><p>Il gestionale non dispone di registrazione pubblica. L'accesso ai dati è consentito soltanto all'account inserito nella lista autorizzata del magazzino.</p><p class="hint">Account attuale: <strong>${esc(session?.user?.email||'')}</strong></p></div></div>`;$('#uploadLogo').onclick=async()=>{const f=$('#logoFile').files[0];if(!f){toast('Seleziona un file',true);return}const ext=f.name.split('.').pop().toLowerCase();const path=`logo-ufficiale.${ext}`;try{await safe(sb.storage.from('magazzino-assets').upload(path,f,{upsert:true,contentType:f.type}));await safe(sb.from('mag_impostazioni').update({logo_path:path,aggiornato_il:new Date().toISOString(),aggiornato_da:session.user.id}).eq('id','principale'));toast('Logo aggiornato');renderImpostazioni()}catch(er){toast(er.message,true)}}}

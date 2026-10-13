@@ -1068,7 +1068,7 @@ async function renderVestiario(){
  if($('#vesZeroSave'))$('#vesZeroSave').onclick=async()=>{
   const articolo=$('#vesZeroArt').value,taglia=$('#vesZeroTag').value,condizione=$('#vesZeroCond').value;
   const raw=$('#vesZeroMin').value.trim();
-  if(!/^\\d+$/.test(raw)){toast('Inserisci una scorta minima valida',true);return}
+  if(!/^\d+$/.test(raw)){toast('Inserisci una scorta minima valida',true);return}
   if(stock.some(x=>x.articolo===articolo&&x.taglia===taglia&&x.condizione===condizione)){
    toast('Taglia già presente: usa Modifica in Giacenze per cambiare la scorta minima',true);return
   }

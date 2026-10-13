@@ -174,7 +174,7 @@ async function loadBase(){
    safe(sb.from('mag_lotti').select('*,mag_articoli(codice,nome,unita_misura)').order('data_scadenza',{ascending:true,nullsFirst:false}))
  ]); cache={categorie,articoli,ubicazioni,lotti};
 }
-async function showPage(id){currentPage=id;$$('.page').forEach(x=>x.classList.add('hidden'));$('#page-'+id).classList.remove('hidden');$$('.nav-btn').forEach(x=>x.classList.toggle('active',x.dataset.page===id));try{await ({dashboard:renderDashboard,articoli:renderArticoli,categorie:renderCategorie,lotti:renderLotti,movimenti:renderMovimenti,scadenze:renderScadenze,dotazioni:renderDotazioni,inventario:renderInventario,riordino:renderRiordino,vestiario:renderVestiario,impostazioni:renderImpostazioni}[id]||renderDashboard)()}catch(e){console.error(e);toast(e.message||'Errore',true)}}
+async function showPage(id){if(id==='vestiario'&&currentPage!=='vestiario'){vestiarioMostraGiacenze=false;vestiarioMostraRiordino=false;vestiarioMostraAssegnazioni=false;vestiarioMostraStorico=false;vestiarioMostraModulo=false;}currentPage=id;$$('.page').forEach(x=>x.classList.add('hidden'));$('#page-'+id).classList.remove('hidden');$$('.nav-btn').forEach(x=>x.classList.toggle('active',x.dataset.page===id));try{await ({dashboard:renderDashboard,articoli:renderArticoli,categorie:renderCategorie,lotti:renderLotti,movimenti:renderMovimenti,scadenze:renderScadenze,dotazioni:renderDotazioni,inventario:renderInventario,riordino:renderRiordino,vestiario:renderVestiario,impostazioni:renderImpostazioni}[id]||renderDashboard)()}catch(e){console.error(e);toast(e.message||'Errore',true)}}
 
 async function renderDashboard(){
  await loadBase();

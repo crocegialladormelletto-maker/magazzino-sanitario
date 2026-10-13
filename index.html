@@ -164,6 +164,8 @@ async function showPage(id){currentPage=id;$$('.page').forEach(x=>x.classList.ad
 
 async function renderDashboard(){
  await loadBase();
+ const scorteVestiario=await safe(sb.from('mag_vestiario').select('articolo,taglia,quantita,minima'));
+ const allertaVestiario=scorteVestiario.filter(x=>Number(x.minima)>0&&Number(x.quantita)<Number(x.minima));
  const [inv,mov,reint,riordino]=await Promise.all([
   safe(sb.from('mag_inventario').select('*')),
   safe(sb.from('mag_movimenti').select('*,mag_lotti(mag_articoli(nome,codice))').order('creato_il',{ascending:false}).limit(8)),
@@ -188,7 +190,7 @@ async function renderDashboard(){
    return `<ul>${rows.slice(0,8).map(x=>`<li>${mapper(x)}</li>`).join('')}${rows.length>8?`<li><strong>+${rows.length-8} altri</strong></li>`:''}</ul>`;
  };
 
- $('#page-dashboard').innerHTML=pageHead('Dashboard')+`<div class="panel"><button type="button" class="btn secondary" id="dashVestGiacenze">📦 Giacenze vestiario</button></div><div class="cards">
+ $('#page-dashboard').innerHTML=pageHead('Dashboard')+`<div class="panel"><button type="button" class="btn secondary" id="dashVestGiacenze">📦 Giacenze vestiario</button> <button type="button" class="btn secondary" id="dashVestRiordino">🛒 Riordino vestiario (${allertaVestiario.length})</button>${allertaVestiario.length?`<p style="font-weight:800;color:#a23c10">⚠ Scorte vestiario sotto minimo: ${allertaVestiario.map(x=>esc(x.articolo+" "+x.taglia)).join(", ")}</p>`:""}</div><div class="cards">
   <div class="card metric kpi-blue"><div class="label">Articoli attivi</div><div class="value">${cache.articoli.filter(a=>a.attivo&&!a.solo_dotazione_ambulanze).length}</div></div>
   <div class="card metric kpi-cyan"><div class="label">Unità complessive</div><div class="value">${fmt(inv.reduce((s,x)=>s+Number(x.quantita||0),0))}</div></div>
   <div class="card metric kpi-orange"><div class="label">Sotto scorta</div><div class="value">${low}</div></div>
@@ -234,6 +236,7 @@ async function renderDashboard(){
    card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});
  });
  $('#dashVestGiacenze').onclick=()=>{vestiarioMostraGiacenze=true;showPage('vestiario')};
+ $('#dashVestRiordino').onclick=()=>{vestiarioMostraRiordino=true;vestiarioMostraGiacenze=false;vestiarioMostraAssegnazioni=false;vestiarioMostraStorico=false;showPage('vestiario')};
  const toggle=$('#toggleRecentMoves'), box=$('#recentMovesPanel');
  if(toggle&&box)toggle.onclick=()=>{
    const hidden=box.classList.toggle('hidden');

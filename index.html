@@ -1042,9 +1042,15 @@ async function renderVestiario(){
  });
  p.querySelectorAll('[data-ves-delete]').forEach(b=>b.onclick=async()=>{
   const x=stock.find(v=>String(v.id)===b.dataset.vesDelete);if(!x)return;
-  if(!window.confirm('Eliminare la riga '+x.articolo+' '+x.taglia+' ('+x.condizione+')? Operazione consentita solo con giacenza zero. I movimenti storici restano conservati.'))return;
+  if(!window.confirm('Confermi la rimozione di '+x.articolo+' '+x.taglia+' ('+x.condizione+')? La giacenza verrà rettificata e lo storico resterà conservato.'))return;
   b.disabled=true;
-  try{await safe(sb.rpc('mag_elimina_riga_vestiario',{p_id:x.id}));toast('Riga eliminata');await renderVestiario()}
+  try{
+   if(Number(x.quantita)>0){
+    await safe(sb.rpc('mag_correggi_giacenza_vestiario',{p_id:x.id,p_quantita:0,p_minima:Number(x.minima||0),p_motivo:'Annullamento giacenza per articolo inserito erroneamente'}));
+   }
+   await safe(sb.rpc('mag_elimina_riga_vestiario',{p_id:x.id}));
+   toast('Articolo rimosso e rettifica registrata');await renderVestiario()
+  }
   catch(e){toast(e.message,true);b.disabled=false}
  });
 }

@@ -125,7 +125,23 @@
     </div>
   </div>
 
-  <script type="module">import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+  <script>
+window.magLoginReady=false;
+document.addEventListener('DOMContentLoaded',()=>{
+ const form=document.getElementById('loginForm');
+ const msg=document.getElementById('loginMsg');
+ if(form)form.addEventListener('submit',()=>{
+  if(!window.magLoginReady&&msg)msg.textContent='Il sistema di accesso non è stato caricato. Aggiorna la pagina; se il problema continua segnala questo messaggio.';
+ });
+});
+</script>
+<script type="module">let createClient;
+try {
+ ({createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'));
+} catch(primaryError) {
+ console.warn('Libreria principale non disponibile, tento sorgente alternativa',primaryError);
+ ({createClient}=await import('https://esm.sh/@supabase/supabase-js@2'));
+}
 
 const SUPABASE_URL='https://ihottewckpwpwqzpxusl.supabase.co';
 const SUPABASE_KEY='sb_publishable_K7aTp6hLR_Pcpn7UGvArLg_DEgBjlH4';
@@ -162,6 +178,7 @@ async function boot(){
  await loadBase(); await showPage('dashboard');
 }
 $('#loginEmail').value=RESPONSABILE_EMAIL;
+window.magLoginReady=true;
 $('#loginForm').addEventListener('submit',async e=>{
  e.preventDefault();
  const msg=$('#loginMsg'),btn=$('#loginForm button[type="submit"]');

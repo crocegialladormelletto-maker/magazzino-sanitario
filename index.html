@@ -79,6 +79,8 @@
 @media(max-width:650px){.ves-dashboard{grid-template-columns:1fr;gap:10px}.ves-tile{min-height:75px}.ves-tile-icon{min-width:72px;font-size:28px}.ves-tile strong{font-size:16px}}
 
 .ves-cens-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:17px 0}.ves-cens-summary>div{background:#eaf2fa;padding:15px;border-radius:12px;border:1px solid #cfe1ef}.ves-cens-summary>div:nth-child(2){background:#fff5d9}.ves-cens-summary>div:nth-child(3){background:#e2f6e8}.ves-cens-summary small{display:block;font-weight:700}.ves-cens-summary strong{display:block;font-size:27px;color:#123b64}.ves-cens-list{display:grid;gap:13px}.ves-cens-card{background:#fff;border:1px solid #d8e4ed;border-radius:14px;overflow:hidden}.ves-cens-head{background:#f1f6fa;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 17px}.ves-cens-head strong{font-size:17px;color:#123b64}.ves-cens-head small{display:block;margin-top:3px;color:#5d7485}.ves-cens-status{border-radius:22px;padding:7px 11px;font-size:12px;font-weight:800;white-space:nowrap}.ves-cens-status.pending{background:#ffebc3;color:#865713}.ves-cens-status.done{background:#d9f2e3;color:#17643f}.ves-cens-body{padding:15px 17px}.ves-cens-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:13px}.ves-cens-chips span{background:#eaf2f9;border-radius:9px;padding:7px 10px;color:#164468;font-size:13px}.ves-cens-card details{border:1px solid #dde6ee;border-radius:9px;padding:10px}.ves-cens-card summary{cursor:pointer;font-weight:800}.ves-cens-card details .table-wrap{margin-top:10px}.ves-cens-actions{display:flex;justify-content:flex-end;margin-top:13px}@media(max-width:600px){.ves-cens-summary{gap:5px}.ves-cens-summary>div{padding:9px}.ves-cens-summary strong{font-size:21px}.ves-cens-head{flex-wrap:wrap}}
+
+.ves-cens-missing{border:1px solid #edd28a;border-left:5px solid #d6a52f;background:#fffaf0;border-radius:12px;padding:16px;margin:14px 0}.ves-missing-list{display:grid;gap:7px;max-height:340px;overflow:auto}.ves-missing-row{background:white;border:1px solid #e7e0ce;border-radius:9px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -1066,6 +1068,7 @@ async function renderVestiario(){
  const stock=await safe(sb.from('mag_vestiario').select('*').order('articolo').order('taglia'));
  const assegnazioni=await safe(sb.from('mag_vestiario_assegnazioni').select('*').order('consegnato_il',{ascending:false}));
  const censimenti=vestiarioMostraCensimenti?await safe(sb.from('vestiario_censimenti').select('*').order('compilato_il',{ascending:false})):[];
+ const mancantiCensimento=vestiarioMostraCensimenti?await safe(sb.rpc('vestiario_censimento_mancanti')):[];
  const storico=vestiarioMostraStorico?await safe(sb.from('mag_vestiario_movimenti').select('*').order('creato_il',{ascending:false}).limit(150)):[];
  const p=$('#page-vestiario');
  const available=(stock||[]).reduce((sum,x)=>sum+Number(x.quantita||0),0);
@@ -1085,7 +1088,11 @@ async function renderVestiario(){
  </div>
  <div class="actions" style="margin:14px 0"><button type="button" class="btn secondary" id="vesBackDashboard">⌂ Menu vestiario</button></div>
  ${vestiarioMostraCensimenti?`<div class="panel">
-<div class="actions" style="justify-content:space-between;align-items:center;gap:12px"><div><h3 style="margin:0">📝 Risposte censimento personale</h3><p class="hint">Le dichiarazioni non modificano le giacenze del magazzino.</p></div><div class="actions"><button type="button" class="btn secondary" id="vesCopyLink">🔗 Copia link</button><button type="button" class="btn secondary" id="vesCensPrint">🖨 Stampa</button></div></div>
+<div class="actions" style="justify-content:space-between;align-items:center;gap:12px"><div><h3 style="margin:0">📝 Risposte censimento personale</h3><p class="hint">Le dichiarazioni non modificano le giacenze del magazzino.</p></div><div class="actions"><button type="button" class="btn primary" id="vesRemindMissing">📣 Sollecita mancanti (${mancantiCensimento.length})</button><button type="button" class="btn secondary" id="vesCopyLink">🔗 Copia link</button><button type="button" class="btn secondary" id="vesCensPrint">🖨 Stampa</button></div></div>
+<div id="vesMissingPanel" class="ves-cens-missing" style="display:none"><h4 style="margin:0 0 7px">Personale che non ha ancora compilato (${mancantiCensimento.length})</h4>
+<p class="hint">Elenco aggiornato dalle risposte ricevute. Seleziona un nominativo per preparare un sollecito personale su WhatsApp, oppure copia il messaggio per il gruppo. L'invio avviene solo dopo la tua conferma.</p>
+<div class="actions" style="margin:10px 0"><button type="button" class="btn secondary" id="vesCopyReminder">📋 Copia sollecito per il gruppo</button><button type="button" class="btn secondary" id="vesRefreshMissing">↻ Aggiorna elenco</button></div>
+<div class="ves-missing-list">${mancantiCensimento.map(x=>`<div class="ves-missing-row"><strong>${esc(x.nominativo)}</strong><button type="button" class="btn secondary small" data-ves-remind-badge="${esc(x.badge)}">💬 Prepara messaggio</button></div>`).join('')||'<p>✅ Tutto il personale attivo ha compilato il censimento.</p>'}</div></div>
 <div class="ves-cens-summary"><div><small>Risposte ricevute</small><strong>${censimenti.length}</strong></div><div><small>Da verificare</small><strong>${censimenti.filter(x=>x.stato!=='verificato').length}</strong></div><div><small>Verificate</small><strong>${censimenti.filter(x=>x.stato==='verificato').length}</strong></div></div>
 <div class="grid-2" style="margin:15px 0"><label>Cerca nominativo o badge<input id="vesCensSearch" type="search" placeholder="Cerca personale"></label><label>Filtra per stato<select id="vesCensFilter"><option value="tutti">Tutte</option><option value="da_verificare">Da verificare</option><option value="verificato">Verificate</option></select></label></div>
 <div class="ves-cens-list">
@@ -1140,6 +1147,18 @@ ${censimenti.map(x=>`<article class="ves-cens-card" data-cens-person="${esc((x.n
  $('#vesBackDashboard').onclick=()=>setVesView('menu');
  if($('#vesCopyLink'))$('#vesCopyLink').onclick=async()=>{const url='https://crocegialladormelletto-maker.github.io/gestionale-croce-gialla/censimento-vestiario/';try{await navigator.clipboard.writeText(url);toast('Link censimento copiato')}catch(e){window.prompt('Copia il link',url)}};
  if($('#vesCensPrint'))$('#vesCensPrint').onclick=()=>window.print();
+ const reminderLink='https://crocegialladormelletto-maker.github.io/gestionale-croce-gialla/censimento-vestiario/';
+ const reminderText='Croce Gialla Emergenza ODV — Si ricorda di compilare il censimento vestiario entro lunedì 19 ottobre 2026. Se non hai ancora risposto, compila il modulo: '+reminderLink+' Grazie per la collaborazione.';
+ const copyReminder=async textMsg=>{try{await navigator.clipboard.writeText(textMsg);toast('Messaggio copiato: incollalo su WhatsApp')}catch(e){window.prompt('Copia questo messaggio',textMsg)}};
+ if($('#vesRemindMissing'))$('#vesRemindMissing').onclick=()=>{const el=$('#vesMissingPanel');el.style.display=el.style.display==='none'?'block':'none'};
+ if($('#vesCopyReminder'))$('#vesCopyReminder').onclick=()=>copyReminder(reminderText);
+ if($('#vesRefreshMissing'))$('#vesRefreshMissing').onclick=()=>renderVestiario();
+ p.querySelectorAll('[data-ves-remind-badge]').forEach(btn=>btn.onclick=()=>{
+  const person=mancantiCensimento.find(x=>String(x.badge)===btn.dataset.vesRemindBadge);
+  if(!person)return;
+  const msg='Ciao '+person.nominativo+', ti ricordiamo di compilare il censimento vestiario della Croce Gialla entro lunedì 19 ottobre 2026. Ecco il link: '+reminderLink+' Grazie!';
+  copyReminder(msg);
+ });
  const filterCens=()=>{const q=($('#vesCensSearch')?.value||'').toLocaleLowerCase('it').trim(),state=$('#vesCensFilter')?.value||'tutti';let n=0;p.querySelectorAll('.ves-cens-card').forEach(card=>{const show=card.dataset.censPerson.includes(q)&&(state==='tutti'||card.dataset.censStatus===state);card.style.display=show?'':'none';if(show)n++});if($('#vesCensEmpty'))$('#vesCensEmpty').style.display=n?'none':'block'};
  if($('#vesCensSearch'))$('#vesCensSearch').addEventListener('input',filterCens);
  if($('#vesCensFilter'))$('#vesCensFilter').addEventListener('change',filterCens);

@@ -130,8 +130,8 @@ window.magLoginReady=false;
 document.addEventListener('DOMContentLoaded',()=>{
  const form=document.getElementById('loginForm');
  const msg=document.getElementById('loginMsg');
- if(form)form.addEventListener('submit',()=>{
-  if(!window.magLoginReady&&msg)msg.textContent='Il sistema di accesso non è stato caricato. Aggiorna la pagina; se il problema continua segnala questo messaggio.';
+ if(form)form.addEventListener('submit',e=>{
+  if(!window.magLoginReady){e.preventDefault();if(msg)msg.textContent='Il sistema di accesso non è stato caricato. Aggiorna la pagina; se il problema continua segnala questo messaggio.';}
  });
 });
 </script>

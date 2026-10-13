@@ -1058,7 +1058,7 @@ async function renderVestiario(){
 <label>Scorta minima<input id="vesZeroMin" type="number" min="0" step="1" value="1"></label>
 </div>
 <button type="button" class="btn secondary" id="vesZeroSave">Inserisci taglia (0 pezzi)</button>
-</div>`}
+</div>`:''}
  ${vestiarioMostraStorico?`<div class="panel"><h3>Archivio movimenti vestiario</h3><p class="hint">Storico riservato agli account autorizzati del magazzino.</p><div class="table-wrap"><table><thead><tr><th>Data</th><th>Operazione</th><th>Articolo</th><th>Taglia</th><th>Q.tà</th><th>Nominativo</th><th>Note</th></tr></thead><tbody>${storico.map(x=>`<tr><td>${esc(new Date(x.creato_il).toLocaleString('it-IT'))}</td><td>${esc(x.tipo)}</td><td>${esc(x.articolo)}</td><td>${esc(x.taglia)}</td><td>${esc(x.quantita)}</td><td>${esc(x.nominativo||'—')}</td><td>${esc(x.note||'')}</td></tr>`).join('')||'<tr><td colspan="7">Nessun movimento.</td></tr>'}</tbody></table></div></div>`:''}
  ${vestiarioMostraAssegnazioni?`<div class="panel"><h3>Consegna vestiario</h3><p class="hint">Dopo la consegna puoi stampare subito il verbale. Per ristamparlo usa il pulsante accanto alla consegna già registrata.</p><div class="grid-2">
 <label>Badge personale *<input id="vaBadge" placeholder="Badge del gestionale principale"></label>

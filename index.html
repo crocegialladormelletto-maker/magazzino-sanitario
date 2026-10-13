@@ -188,7 +188,7 @@ async function renderDashboard(){
    return `<ul>${rows.slice(0,8).map(x=>`<li>${mapper(x)}</li>`).join('')}${rows.length>8?`<li><strong>+${rows.length-8} altri</strong></li>`:''}</ul>`;
  };
 
- $('#page-dashboard').innerHTML=pageHead('Dashboard')+`<div class="cards">
+ $('#page-dashboard').innerHTML=pageHead('Dashboard')+`<div class="panel"><button type="button" class="btn secondary" id="dashVestGiacenze">📦 Giacenze vestiario</button></div><div class="cards">
   <div class="card metric kpi-blue"><div class="label">Articoli attivi</div><div class="value">${cache.articoli.filter(a=>a.attivo&&!a.solo_dotazione_ambulanze).length}</div></div>
   <div class="card metric kpi-cyan"><div class="label">Unità complessive</div><div class="value">${fmt(inv.reduce((s,x)=>s+Number(x.quantita||0),0))}</div></div>
   <div class="card metric kpi-orange"><div class="label">Sotto scorta</div><div class="value">${low}</div></div>
@@ -233,6 +233,7 @@ async function renderDashboard(){
    card.addEventListener('click',open);
    card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});
  });
+ $('#dashVestGiacenze').onclick=()=>{vestiarioMostraGiacenze=true;showPage('vestiario')};
  const toggle=$('#toggleRecentMoves'), box=$('#recentMovesPanel');
  if(toggle&&box)toggle.onclick=()=>{
    const hidden=box.classList.toggle('hidden');

@@ -998,17 +998,19 @@ async function renderRiordino(){
 let vestiarioMostraGiacenze=false;
 let vestiarioMostraRiordino=false;
 let vestiarioMostraAssegnazioni=false;
+let vestiarioMostraStorico=false;
 async function renderVestiario(){
  const stock=await safe(sb.from('mag_vestiario').select('*').order('articolo').order('taglia'));
  const assegnazioni=await safe(sb.from('mag_vestiario_assegnazioni').select('*').order('consegnato_il',{ascending:false}));
+ const storico=vestiarioMostraStorico?await safe(sb.from('mag_vestiario_movimenti').select('*').order('creato_il',{ascending:false}).limit(150)):[];
  const p=$('#page-vestiario');
  const available=(stock||[]).reduce((sum,x)=>sum+Number(x.quantita||0),0);
  const daRiordinare=(stock||[]).filter(x=>Number(x.minima)>0&&Number(x.quantita)<Number(x.minima));
  p.innerHTML=pageHead('Vestiario')+`
  <div class="panel"><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
  <img alt="Logo Croce Gialla Emergenza ODV" src="https://primary.jwwb.nl/public/s/b/j/temp-jdsqfuxejozahvwvidxb/logo-ridimensionato-no-sfondo-high.png?enable=upscale&amp;enable-io=true&amp;height=240" style="width:86px;height:86px;object-fit:contain">
- <div><h3>Magazzino vestiario</h3><p class="hint">Capi in giacenza: <strong>${available}</strong>. Separato dal materiale sanitario.</p></div></div><div class="actions" style="margin-top:12px"><button type="button" id="vesShowGiacenze" class="btn secondary">${vestiarioMostraGiacenze?'← Torna a registra movimento':'📦 Visualizza giacenze'}</button><button type="button" id="vesShowRiordino" class="btn secondary">${vestiarioMostraRiordino?'← Torna a registra movimento' :'🛒 Riordino ('+daRiordinare.length+')'}</button><button id="vesShowAssegnazioni" type="button" class="btn secondary">👕 Vestiario assegnato</button></div></div>
- ${(vestiarioMostraGiacenze||vestiarioMostraRiordino||vestiarioMostraAssegnazioni)?'':`<div class="panel"><h3>Registra movimento</h3>
+ <div><h3>Magazzino vestiario</h3><p class="hint">Capi in giacenza: <strong>${available}</strong>. Separato dal materiale sanitario.</p></div></div><div class="actions" style="margin-top:12px"><button type="button" id="vesShowGiacenze" class="btn secondary">${vestiarioMostraGiacenze?'← Torna a registra movimento':'📦 Visualizza giacenze'}</button><button type="button" id="vesShowRiordino" class="btn secondary">${vestiarioMostraRiordino?'← Torna a registra movimento' :'🛒 Riordino ('+daRiordinare.length+')'}</button><button id="vesShowAssegnazioni" type="button" class="btn secondary">👕 Vestiario assegnato</button><button id="vesShowStorico" type="button" class="btn secondary">📋 Archivio movimenti</button></div></div>
+ ${(vestiarioMostraGiacenze||vestiarioMostraRiordino||vestiarioMostraAssegnazioni||vestiarioMostraStorico)?'':`<div class="panel"><h3>Registra movimento</h3>
  <div class="grid-2">
  <label>Operazione<select id="vesTipo"><option value="CARICO">Carico</option><option value="CONSEGNA">Consegna</option><option value="RESTITUZIONE">Restituzione</option></select></label>
  <label>Articolo<select id="vesArt"><option>Giacca</option><option>Pantalone</option><option>T-Shirt</option></select></label>
@@ -1030,6 +1032,7 @@ async function renderVestiario(){
 </div>
 <button type="button" class="btn secondary" id="vesZeroSave">Inserisci taglia (0 pezzi)</button>
 </div>`}
+ ${vestiarioMostraStorico?`<div class="panel"><h3>Archivio movimenti vestiario</h3><p class="hint">Storico riservato agli account autorizzati del magazzino.</p><div class="table-wrap"><table><thead><tr><th>Data</th><th>Operazione</th><th>Articolo</th><th>Taglia</th><th>Q.tà</th><th>Nominativo</th><th>Note</th></tr></thead><tbody>${storico.map(x=>`<tr><td>${esc(new Date(x.creato_il).toLocaleString('it-IT'))}</td><td>${esc(x.tipo)}</td><td>${esc(x.articolo)}</td><td>${esc(x.taglia)}</td><td>${esc(x.quantita)}</td><td>${esc(x.nominativo||'—')}</td><td>${esc(x.note||'')}</td></tr>`).join('')||'<tr><td colspan="7">Nessun movimento.</td></tr>'}</tbody></table></div></div>`:''}
  ${vestiarioMostraAssegnazioni?`<div class="panel"><h3>Consegna vestiario</h3><div class="grid-2">
 <label>Badge personale *<input id="vaBadge" placeholder="Badge del gestionale principale"></label>
 <label>Nominativo *<input id="vaNome" placeholder="Nome e cognome"></label>
@@ -1041,11 +1044,36 @@ async function renderVestiario(){
 <label>Note<input id="vaNote"></label></div>
 <p class="hint">Usa il badge e il nominativo della scheda personale. Alla conferma la giacenza viene scalata.</p><button id="vaConsegna" class="btn primary" type="button">Conferma consegna</button></div>
 <div class="panel"><h3>Vestiario assegnato e restituzioni</h3><div class="table-wrap"><table><thead><tr><th>Persona</th><th>Tipo</th><th>Capo</th><th>Taglia</th><th>Consegnati</th><th>Restituiti</th><th>Data</th><th>Azioni</th></tr></thead><tbody>${assegnazioni.map(a=>`<tr><td>${esc(a.nominativo)} (badge ${esc(a.badge)})</td><td>${esc(a.tipo_personale)}</td><td>${esc(a.articolo)}</td><td>${esc(a.taglia)}</td><td>${esc(a.quantita_consegnata)}</td><td>${esc(a.quantita_restituita)}</td><td>${esc(new Date(a.consegnato_il).toLocaleDateString('it-IT'))}</td><td><button class="btn secondary small" data-va-print="${a.id}" type="button">Stampa verbale</button> ${a.quantita_consegnata>a.quantita_restituita?`<button class="btn secondary small" data-va-return="${a.id}" type="button">Restituzione</button>`:''}</td></tr>`).join('')||'<tr><td colspan="8">Nessuna consegna registrata.</td></tr>'}</tbody></table></div></div>`:''}
- ${vestiarioMostraRiordino?`<div class="panel"><h3>Riordino vestiario</h3><button type="button" class="btn primary" id="vesPrintRiordino" style="margin-bottom:12px">🖨 Stampa riordino</button><p class="hint">Articoli sotto la scorta minima. Puoi annotare quanti capi acquistare e segnare l'ordine effettuato.</p><div class="table-wrap"><table><thead><tr><th>Articolo</th><th>Taglia</th><th>Disponibili</th><th>Minimo</th><th>Da ordinare</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>${daRiordinare.map(x=>`<tr><td>${esc(x.articolo)}</td><td>${esc(x.taglia)}</td><td>${esc(x.quantita)}</td><td>${esc(x.minima)}</td><td><input type="number" min="1" step="1" style="max-width:85px" data-ves-order-qty="${x.id}" value="${Number(x.da_ordinare)||Math.max(1,x.minima-x.quantita)}"></td><td>${x.ordinato?'Ordinato':'Da ordinare'}</td><td><button type="button" class="btn secondary small" data-ves-order="${x.id}">${x.ordinato?'Annulla ordine':'Segna ordinato'}</button></td></tr>`).join('')||'<tr><td colspan="7">Nessun articolo sotto la scorta minima.</td></tr>'}</tbody></table></div></div>`:''}
- ${vestiarioMostraGiacenze?`<div class="panel"><h3>Giacenze per articolo, taglia e stato</h3><div class="table-wrap"><table><thead><tr><th>Articolo</th><th>Taglia</th><th>Stato</th><th>Disponibili</th><th>Minima</th><th>Azioni</th></tr></thead><tbody>${(stock||[]).map(x=>`<tr><td>${esc(x.articolo)}</td><td>${esc(x.taglia)}</td><td>${esc(x.condizione)}</td><td>${esc(x.quantita)}</td><td>${esc(x.minima)}</td><td><button type="button" class="btn secondary small" data-ves-edit="${x.id}">Modifica</button> <button type="button" class="btn danger small" data-ves-delete="${x.id}">Elimina</button></td></tr>`).join('')||'<tr><td colspan="6">Nessun capo caricato. Registra il primo carico.</td></tr>'}</tbody></table></div></div>` : ''}`;
- $('#vesShowGiacenze').onclick=()=>{vestiarioMostraGiacenze=!vestiarioMostraGiacenze;vestiarioMostraRiordino=false;vestiarioMostraAssegnazioni=false;renderVestiario()};
+ ${vestiarioMostraRiordino?`<div class="panel"><h3>Riordino vestiario</h3><button type="button" id="vesMerceRicevuta" class="btn secondary" style="margin-bottom:12px">📦 Merce ricevuta</button> <button type="button" class="btn primary" id="vesPrintRiordino" style="margin-bottom:12px">🖨 Stampa riordino</button><p class="hint">Articoli sotto la scorta minima. Puoi annotare quanti capi acquistare e segnare l'ordine effettuato.</p><div class="table-wrap"><table><thead><tr><th>Articolo</th><th>Taglia</th><th>Disponibili</th><th>Minimo</th><th>Da ordinare</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>${daRiordinare.map(x=>`<tr><td>${esc(x.articolo)}</td><td>${esc(x.taglia)}</td><td>${esc(x.quantita)}</td><td>${esc(x.minima)}</td><td><input type="number" min="1" step="1" style="max-width:85px" data-ves-order-qty="${x.id}" value="${Number(x.da_ordinare)||Math.max(1,x.minima-x.quantita)}"></td><td>${x.ordinato?'Ordinato':'Da ordinare'}</td><td><button type="button" class="btn secondary small" data-ves-order="${x.id}">${x.ordinato?'Annulla ordine':'Segna ordinato'}</button></td></tr>`).join('')||'<tr><td colspan="7">Nessun articolo sotto la scorta minima.</td></tr>'}</tbody></table></div></div>`:''}
+ ${vestiarioMostraGiacenze?`<div class="panel"><h3>Giacenze per articolo, taglia e stato</h3><button type="button" id="vesPrintInventario" class="btn primary" style="margin-bottom:12px">🖨 Stampa inventario</button><div class="table-wrap"><table><thead><tr><th>Articolo</th><th>Taglia</th><th>Stato</th><th>Disponibili</th><th>Minima</th><th>Azioni</th></tr></thead><tbody>${(stock||[]).map(x=>`<tr><td>${esc(x.articolo)}</td><td>${esc(x.taglia)}</td><td>${esc(x.condizione)}</td><td>${esc(x.quantita)}</td><td>${esc(x.minima)}</td><td><button type="button" class="btn secondary small" data-ves-edit="${x.id}">Modifica</button> <button type="button" class="btn danger small" data-ves-delete="${x.id}">Elimina</button></td></tr>`).join('')||'<tr><td colspan="6">Nessun capo caricato. Registra il primo carico.</td></tr>'}</tbody></table></div></div>` : ''}`;
+ $('#vesShowGiacenze').onclick=()=>{vestiarioMostraGiacenze=!vestiarioMostraGiacenze;vestiarioMostraRiordino=false;vestiarioMostraAssegnazioni=false;vestiarioMostraStorico=false;renderVestiario()};
  $('#vesShowRiordino').onclick=()=>{vestiarioMostraRiordino=!vestiarioMostraRiordino;vestiarioMostraGiacenze=false;vestiarioMostraAssegnazioni=false;renderVestiario()};
  $('#vesShowAssegnazioni').onclick=()=>{vestiarioMostraAssegnazioni=!vestiarioMostraAssegnazioni;vestiarioMostraGiacenze=false;vestiarioMostraRiordino=false;renderVestiario()};
+ $('#vesShowStorico').onclick=()=>{vestiarioMostraStorico=!vestiarioMostraStorico;vestiarioMostraGiacenze=false;vestiarioMostraRiordino=false;vestiarioMostraAssegnazioni=false;renderVestiario()};
+ if($('#vesMerceRicevuta'))$('#vesMerceRicevuta').onclick=async()=>{
+  const pending=stock.filter(x=>x.ordinato);
+  if(!pending.length){toast('Nessun ordine segnato come ordinato',true);return}
+  const choices=pending.map(x=>x.id+' — '+x.articolo+' '+x.taglia+' ('+x.condizione+')').join('\\n');
+  const id=window.prompt('Inserisci il numero identificativo dell’articolo ricevuto:\\n'+choices);
+  if(id===null)return;
+  const x=pending.find(x=>String(x.id)===id.trim());
+  if(!x){toast('Articolo non valido',true);return}
+  const raw=window.prompt('Quantità effettivamente ricevuta per '+x.articolo+' '+x.taglia+':',String(x.da_ordinare||1));
+  if(raw===null)return;
+  const qty=Number(raw);if(!Number.isInteger(qty)||qty<1){toast('Quantità non valida',true);return}
+  try{
+   await safe(sb.rpc('mag_registra_vestiario',{p_articolo:x.articolo,p_taglia:x.taglia,p_condizione:x.condizione,p_tipo:'CARICO',p_quantita:qty,p_nominativo:null,p_badge:null,p_note:'Merce ricevuta da riordino'}));
+   const remain=Math.max(0,Number(x.da_ordinare||0)-qty);
+   await safe(sb.from('mag_vestiario').update({da_ordinare:remain,ordinato:remain>0}).eq('id',x.id));
+   toast('Merce ricevuta: giacenza aggiornata');await renderVestiario();
+  }catch(e){toast(e.message,true)}
+ };
+ if($('#vesPrintInventario'))$('#vesPrintInventario').onclick=()=>{
+  const w=window.open('','_blank');if(!w){toast('Consenti i popup per la stampa',true);return}
+  const logo='https://primary.jwwb.nl/public/s/b/j/temp-jdsqfuxejozahvwvidxb/logo-ridimensionato-no-sfondo-high.png?enable=upscale&enable-io=true&height=240';
+  const rows=stock.map(x=>'<tr><td>'+esc(x.articolo)+'</td><td>'+esc(x.taglia)+'</td><td>'+esc(x.condizione)+'</td><td>'+esc(x.quantita)+'</td><td>'+esc(x.minima)+'</td></tr>').join('');
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Inventario vestiario</title><style>@page{size:A4;margin:15mm}body{font:13px Arial;color:#12375d}img{height:64px;float:right}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #aaa;padding:7px;text-align:left}th{background:#edf2f7}</style></head><body><img src="'+logo+'"><h1>Croce Gialla Emergenza ODV</h1><h2>Inventario vestiario</h2><p>Data '+new Date().toLocaleDateString('it-IT')+'</p><table><tr><th>Articolo</th><th>Taglia</th><th>Stato</th><th>Giacenza</th><th>Scorta minima</th></tr>'+rows+'</table><p style="margin-top:35px">Firma responsabile __________________________________</p></body></html>');w.document.close();w.focus();w.addEventListener('load',()=>w.print(),{once:true});
+ };
  if($('#vaConsegna'))$('#vaConsegna').onclick=async()=>{
   const q=Number($('#vaQty').value);
   if(!$('#vaBadge').value.trim()||!$('#vaNome').value.trim()||!Number.isInteger(q)||q<1){toast('Inserisci badge, nominativo e quantità valida',true);return}

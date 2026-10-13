@@ -1017,7 +1017,7 @@ async function renderVestiario(){
  <label>Note<input id="vesNote" placeholder="Dettagli consegna o restituzione"></label>
  </div><p class="hint">Per consegne e restituzioni indicare il nominativo. Il materiale consegnato viene scalato dalla giacenza.</p>
  <button type="button" class="btn primary" id="vesSave">Salva movimento</button></div>
- <div class="panel"><h3>Giacenze per articolo, taglia e stato</h3><div class="table-wrap"><table><thead><tr><th>Articolo</th><th>Taglia</th><th>Stato</th><th>Disponibili</th><th>Minima</th></tr></thead><tbody>${(stock||[]).map(x=>`<tr><td>${esc(x.articolo)}</td><td>${esc(x.taglia)}</td><td>${esc(x.condizione)}</td><td>${esc(x.quantita)}</td><td><input type="number" min="0" step="1" style="max-width:90px" data-ves-min="${x.id}" value="${Number(x.minima||0)}"></td></tr>`).join('')||'<tr><td colspan="5">Nessun capo caricato. Registra il primo carico.</td></tr>'}</tbody></table></div></div>
+ <div class="panel"><h3>Giacenze per articolo, taglia e stato</h3><div class="table-wrap"><table><thead><tr><th>Articolo</th><th>Taglia</th><th>Stato</th><th>Disponibili</th><th>Minima</th><th>Azioni</th></tr></thead><tbody>${(stock||[]).map(x=>`<tr><td>${esc(x.articolo)}</td><td>${esc(x.taglia)}</td><td>${esc(x.condizione)}</td><td>${esc(x.quantita)}</td><td>${esc(x.minima)}</td><td><button type="button" class="btn secondary small" data-ves-edit="${x.id}">Modifica</button> <button type="button" class="btn danger small" data-ves-delete="${x.id}">Elimina</button></td></tr>`).join('')||'<tr><td colspan="6">Nessun capo caricato. Registra il primo carico.</td></tr>'}</tbody></table></div></div>
  <div class="panel"><h3>Ultimi movimenti</h3><div class="table-wrap"><table><thead><tr><th>Data</th><th>Operazione</th><th>Articolo</th><th>Taglia</th><th>Q.tà</th><th>Persona</th></tr></thead><tbody>${(moves||[]).map(x=>`<tr><td>${esc(new Date(x.creato_il).toLocaleString('it-IT'))}</td><td>${esc(x.tipo)}</td><td>${esc(x.articolo)}</td><td>${esc(x.taglia)}</td><td>${esc(x.quantita)}</td><td>${esc(x.nominativo||'—')}</td></tr>`).join('')||'<tr><td colspan="6">Nessun movimento registrato.</td></tr>'}</tbody></table></div></div>`;
  $('#vesSave').onclick=async()=>{
   const tipo=$('#vesTipo').value,qty=Number($('#vesQty').value),nome=$('#vesNome').value.trim();
@@ -1029,10 +1029,22 @@ async function renderVestiario(){
    toast('Movimento vestiario registrato');await renderVestiario();
   }catch(e){toast(e.message,true);b.disabled=false}
  };
- p.querySelectorAll('[data-ves-min]').forEach(x=>x.onchange=async()=>{
-  const n=Number(x.value);if(!Number.isInteger(n)||n<0){toast('Scorta minima non valida',true);return}
-  try{await safe(sb.from('mag_vestiario').update({minima:n}).eq('id',Number(x.dataset.vesMin)));toast('Scorta minima aggiornata')}
-  catch(e){toast(e.message,true);await renderVestiario()}
+ p.querySelectorAll('[data-ves-edit]').forEach(b=>b.onclick=async()=>{
+  const x=stock.find(v=>String(v.id)===b.dataset.vesEdit);if(!x)return;
+  const q=window.prompt('Nuova quantità per '+x.articolo+' '+x.taglia+' ('+x.condizione+'):',String(x.quantita));if(q===null)return;
+  const m=window.prompt('Nuova scorta minima:',String(x.minima));if(m===null)return;
+  const motivo=window.prompt('Motivo della correzione (obbligatorio):','Inserimento errato');if(motivo===null)return;
+  if(!/^\\d+$/.test(q.trim())||!/^\\d+$/.test(m.trim())||motivo.trim().length<3){toast('Quantità e motivo non validi',true);return}
+  b.disabled=true;
+  try{await safe(sb.rpc('mag_correggi_giacenza_vestiario',{p_id:x.id,p_quantita:Number(q),p_minima:Number(m),p_motivo:motivo.trim()}));toast('Giacenza corretta');await renderVestiario()}
+  catch(e){toast(e.message,true);b.disabled=false}
+ });
+ p.querySelectorAll('[data-ves-delete]').forEach(b=>b.onclick=async()=>{
+  const x=stock.find(v=>String(v.id)===b.dataset.vesDelete);if(!x)return;
+  if(!window.confirm('Eliminare la riga '+x.articolo+' '+x.taglia+' ('+x.condizione+')? Operazione consentita solo con giacenza zero. I movimenti storici restano conservati.'))return;
+  b.disabled=true;
+  try{await safe(sb.rpc('mag_elimina_riga_vestiario',{p_id:x.id}));toast('Riga eliminata');await renderVestiario()}
+  catch(e){toast(e.message,true);b.disabled=false}
  });
 }
 

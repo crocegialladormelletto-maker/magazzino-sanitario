@@ -1081,7 +1081,7 @@ async function renderVestiario(){
   const q=Number($('#vaQty').value);
   if(!$('#vaBadge').value.trim()||!$('#vaNome').value.trim()||!Number.isInteger(q)||q<1){toast('Inserisci badge, nominativo e quantità valida',true);return}
   const b=$('#vaConsegna');b.disabled=true;
-  try{await safe(sb.rpc('mag_consegna_vestiario',{p_badge:$('#vaBadge').value,p_nominativo:$('#vaNome').value,p_tipo_personale:$('#vaTipo').value,p_articolo:$('#vaArt').value,p_taglia:$('#vaTag').value,p_condizione:$('#vaCond').value,p_quantita:q,p_note:$('#vaNote').value}));toast('Consegna registrata');await renderVestiario()}catch(e){toast(e.message,true);b.disabled=false}
+  try{const consegnaId=await safe(sb.rpc('mag_consegna_vestiario',{p_badge:$('#vaBadge').value,p_nominativo:$('#vaNome').value,p_tipo_personale:$('#vaTipo').value,p_articolo:$('#vaArt').value,p_taglia:$('#vaTag').value,p_condizione:$('#vaCond').value,p_quantita:q,p_note:$('#vaNote').value}));toast('Consegna registrata');await renderVestiario();if(window.confirm('Consegna registrata correttamente. Vuoi stampare ora il verbale di consegna?')){const pulsante=p.querySelector('[data-va-print="'+consegnaId+'"]');if(pulsante)pulsante.click();else toast('Verbale disponibile in Vestiario assegnato',true)}}catch(e){toast(e.message,true);b.disabled=false}
  };
  p.querySelectorAll('[data-va-return]').forEach(b=>b.onclick=async()=>{
   const a=assegnazioni.find(x=>String(x.id)===b.dataset.vaReturn);if(!a)return;

@@ -1016,6 +1016,7 @@ let vestiarioMostraGiacenze=false;
 let vestiarioMostraRiordino=false;
 let vestiarioMostraAssegnazioni=false;
 let vestiarioMostraStorico=false;
+let vestiarioMostraModulo=false;
 async function renderVestiario(){
  const stock=await safe(sb.from('mag_vestiario').select('*').order('articolo').order('taglia'));
  const assegnazioni=await safe(sb.from('mag_vestiario_assegnazioni').select('*').order('consegnato_il',{ascending:false}));
@@ -1036,7 +1037,7 @@ async function renderVestiario(){
  <button type="button" class="ves-tile ves-purple" data-ves-view="storico"><span class="ves-tile-icon">◷</span><strong>Archivio movimenti</strong><span class="ves-arrow">›</span></button>
  </div>
  <div class="actions" style="margin:14px 0"><button type="button" class="btn secondary" id="vesBackDashboard">⌂ Menu vestiario</button></div>
- ${(vestiarioMostraGiacenze||vestiarioMostraRiordino||vestiarioMostraAssegnazioni||vestiarioMostraStorico)?'':`<div class="panel"><h3>Registra movimento</h3>
+ ${vestiarioMostraModulo?`<div class="panel"><h3>Registra movimento</h3>
  <div class="grid-2">
  <label>Operazione<select id="vesTipo"><option value="CARICO">Carico</option><option value="CONSEGNA">Consegna</option><option value="RESTITUZIONE">Restituzione</option></select></label>
  <label>Articolo<select id="vesArt"><option>Giacca</option><option>Pantalone</option><option>T-Shirt</option></select></label>
@@ -1072,11 +1073,11 @@ async function renderVestiario(){
 <div class="panel"><h3>Vestiario assegnato e restituzioni</h3><button type="button" class="btn primary" id="vaPrintLatest" style="margin-bottom:12px">🖨 Stampa ultimo verbale di consegna</button><div class="table-wrap"><table><thead><tr><th>Persona</th><th>Tipo</th><th>Capo</th><th>Taglia</th><th>Consegnati</th><th>Restituiti</th><th>Data</th><th>Azioni</th></tr></thead><tbody>${assegnazioni.map(a=>`<tr><td>${esc(a.nominativo)} (badge ${esc(a.badge)})</td><td>${esc(a.tipo_personale)}</td><td>${esc(a.articolo)}</td><td>${esc(a.taglia)}</td><td>${esc(a.quantita_consegnata)}</td><td>${esc(a.quantita_restituita)}</td><td>${esc(new Date(a.consegnato_il).toLocaleDateString('it-IT'))}</td><td><button class="btn secondary small" data-va-print="${a.id}" type="button">Stampa verbale</button> ${a.quantita_consegnata>a.quantita_restituita?`<button class="btn secondary small" data-va-return="${a.id}" type="button">Restituzione</button>`:''}</td></tr>`).join('')||'<tr><td colspan="8">Nessuna consegna registrata.</td></tr>'}</tbody></table></div></div>`:''}
  ${vestiarioMostraRiordino?`<div class="panel"><h3>Riordino vestiario</h3><button type="button" id="vesMerceRicevuta" class="btn secondary" style="margin-bottom:12px">📦 Merce ricevuta</button> <button type="button" class="btn primary" id="vesPrintRiordino" style="margin-bottom:12px">🖨 Stampa riordino</button><p class="hint">Articoli sotto la scorta minima. Puoi annotare quanti capi acquistare e segnare l'ordine effettuato.</p><div class="table-wrap"><table><thead><tr><th>Articolo</th><th>Taglia</th><th>Disponibili</th><th>Minimo</th><th>Da ordinare</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>${daRiordinare.map(x=>`<tr><td>${esc(x.articolo)}</td><td>${esc(x.taglia)}</td><td>${esc(x.quantita)}</td><td>${esc(x.minima)}</td><td><input type="number" min="1" step="1" style="max-width:85px" data-ves-order-qty="${x.id}" value="${Number(x.da_ordinare)||Math.max(1,x.minima-x.quantita)}"></td><td>${x.ordinato?'Ordinato':'Da ordinare'}</td><td><button type="button" class="btn secondary small" data-ves-order="${x.id}">${x.ordinato?'Annulla ordine':'Segna ordinato'}</button></td></tr>`).join('')||'<tr><td colspan="7">Nessun articolo sotto la scorta minima.</td></tr>'}</tbody></table></div></div>`:''}
  ${vestiarioMostraGiacenze?`<div class="panel"><h3>Giacenze per articolo, taglia e stato</h3><button type="button" id="vesPrintInventario" class="btn primary" style="margin-bottom:12px">🖨 Stampa inventario</button><div class="table-wrap"><table><thead><tr><th>Articolo</th><th>Taglia</th><th>Stato</th><th>Disponibili</th><th>Minima</th><th>Azioni</th></tr></thead><tbody>${(stock||[]).map(x=>`<tr><td>${esc(x.articolo)}</td><td>${esc(x.taglia)}</td><td>${esc(x.condizione)}</td><td>${esc(x.quantita)}</td><td>${esc(x.minima)}</td><td><button type="button" class="btn secondary small" data-ves-edit="${x.id}">Modifica</button> <button type="button" class="btn danger small" data-ves-delete="${x.id}">Elimina</button></td></tr>`).join('')||'<tr><td colspan="6">Nessun capo caricato. Registra il primo carico.</td></tr>'}</tbody></table></div></div>` : ''}`;
- const selectedVesView=vestiarioMostraGiacenze?'giacenze':vestiarioMostraRiordino?'riordino':vestiarioMostraAssegnazioni?'assegnati':vestiarioMostraStorico?'storico':'';
+ const selectedVesView=vestiarioMostraGiacenze?'giacenze':vestiarioMostraRiordino?'riordino':vestiarioMostraAssegnazioni?'assegnati':vestiarioMostraStorico?'storico':vestiarioMostraModulo?'movimento':'';
  const dashVes=$('#vesDashboard');
  if(selectedVesView)dashVes.classList.add('hidden');else $('#vesBackDashboard').classList.add('hidden');
  const setVesView=async view=>{
-  vestiarioMostraGiacenze=view==='giacenze';vestiarioMostraRiordino=view==='riordino';vestiarioMostraAssegnazioni=view==='assegnati';vestiarioMostraStorico=view==='storico';
+  vestiarioMostraGiacenze=view==='giacenze';vestiarioMostraRiordino=view==='riordino';vestiarioMostraAssegnazioni=view==='assegnati';vestiarioMostraStorico=view==='storico';vestiarioMostraModulo=view==='movimento';
   await renderVestiario();
  };
  $('#vesBackDashboard').onclick=()=>setVesView('menu');
@@ -1157,7 +1158,7 @@ async function renderVestiario(){
   try{
    await safe(sb.rpc('mag_registra_vestiario',{p_articolo:$('#vesArt').value,p_taglia:$('#vesTag').value,p_condizione:$('#vesCond').value,p_tipo:tipo,p_quantita:qty,p_nominativo:nome,p_badge:$('#vesBadge').value,p_note:$('#vesNote').value}));
    if(tipo==='CARICO'&&minRaw!==''){await safe(sb.from('mag_vestiario').update({minima:Number(minRaw)}).eq('articolo',$('#vesArt').value).eq('taglia',$('#vesTag').value).eq('condizione',$('#vesCond').value))}
-   toast('Movimento vestiario registrato');vestiarioMostraGiacenze=false;await renderVestiario();
+   toast('Movimento vestiario registrato');vestiarioMostraModulo=true;await renderVestiario();
   }catch(e){toast(e.message,true);b.disabled=false}
  };
  if($('#vesPrintRiordino'))$('#vesPrintRiordino').onclick=()=>{

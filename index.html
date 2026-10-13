@@ -1035,7 +1035,7 @@ async function renderVestiario(){
   const q=window.prompt('Nuova quantità per '+x.articolo+' '+taglia+' ('+x.condizione+'):',String(x.quantita));if(q===null)return;
   const m=window.prompt('Nuova scorta minima:',String(x.minima));if(m===null)return;
   const motivo=window.prompt('Motivo della correzione (obbligatorio):','Inserimento errato');if(motivo===null)return;
-  if(!/^\\d+$/.test(q.trim())||!/^\\d+$/.test(m.trim())||motivo.trim().length<3){toast('Quantità e motivo non validi',true);return}
+  if(!taglia.trim()||!/^\d+$/.test(q.trim())||!/^\d+$/.test(m.trim())||motivo.trim().length<3){toast('Quantità e motivo non validi',true);return}
   b.disabled=true;
   try{await safe(sb.rpc('mag_modifica_riga_vestiario',{p_id:x.id,p_taglia:taglia.trim().toUpperCase(),p_quantita:Number(q),p_minima:Number(m),p_motivo:motivo.trim()}));toast('Giacenza corretta');await renderVestiario()}
   catch(e){toast(e.message,true);b.disabled=false}

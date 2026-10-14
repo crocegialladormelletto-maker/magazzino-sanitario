@@ -1220,7 +1220,7 @@ ${censimenti.map(x=>`<article class="ves-cens-card" data-cens-person="${esc((x.n
   const rows=items.map(z=>[z.articolo,z.taglia,z.q,z.condizione]);
   openVestPrint('Verbale restituzione vestiario n. '+v.id,'<p><b>Personale:</b> '+esc(v.nominativo)+' — Badge '+esc(v.badge)+'<br><b>Data:</b> '+esc(new Date(v.registrato_il).toLocaleString('it-IT'))+'</p>'+tableVest(['Capo','Taglia','Quantità restituita','Condizione'],rows)+'<p>Il personale dichiara di aver restituito i capi elencati.</p><div class="sign"><span>Firma del personale</span><span>Firma responsabile magazzino</span></div>');
  };
- p.querySelectorAll('[data-va-batch]').forEach(btn=>btn.onclick=()=>{
+ p.querySelectorAll('[data-va-batch]').forEach(btn=>btn.onclick=async()=>{
   const items=assegnazioni.filter(a=>(a.badge||a.nominativo)===btn.dataset.vaBatch&&a.quantita_consegnata>a.quantita_restituita);
   const person=items[0];if(!person)return;
   const picked=[];

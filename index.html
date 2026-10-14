@@ -1081,6 +1081,7 @@ async function renderVestiario(){
  <div class="panel"><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
  <img alt="Logo Croce Gialla Emergenza ODV" src="https://primary.jwwb.nl/public/s/b/j/temp-jdsqfuxejozahvwvidxb/logo-ridimensionato-no-sfondo-high.png?enable=upscale&amp;enable-io=true&amp;height=240" style="width:86px;height:86px;object-fit:contain">
  <div><h3>Magazzino vestiario</h3><p class="hint"><strong>${available}</strong> capi disponibili in sede · <strong>${capiAssegnati}</strong> capi presso il personale (${personaleDotazioni} persone). Le due quantità sono separate.</p></div></div><div class="actions" style="margin-top:12px;display:none"><button type="button" id="vesShowGiacenze" class="btn secondary">${vestiarioMostraGiacenze?'← Torna a registra movimento':'📦 Visualizza giacenze'}</button><button type="button" id="vesShowRiordino" class="btn secondary">${vestiarioMostraRiordino?'← Torna a registra movimento' :'🛒 Riordino ('+daRiordinare.length+')'}</button><button id="vesShowAssegnazioni" type="button" class="btn secondary">👕 Vestiario assegnato</button><button id="vesShowStorico" type="button" class="btn secondary">📋 Archivio movimenti</button></div></div>
+ <div class="ves-cens-summary"><div><small>Disponibili in magazzino</small><strong>${available}</strong></div><div><small>Assegnati al personale</small><strong>${capiAssegnati}</strong></div><div><small>Da riordinare</small><strong>${daRiordinare.length}</strong></div></div>
  <div id="vesDashboard" class="ves-dashboard">
  <button type="button" class="ves-tile ves-blue" data-ves-view="giacenze"><span class="ves-tile-icon">▣</span><strong>Giacenze</strong><span class="ves-arrow">›</span></button>
  <button type="button" class="ves-tile ves-yellow" data-ves-view="movimento"><span class="ves-tile-icon">▤</span><strong>Registra movimento</strong><span class="ves-arrow">›</span></button>
@@ -1244,11 +1245,23 @@ ${censimenti.map(x=>`<article class="ves-cens-card" data-cens-person="${esc((x.n
  const v=verbaliRestituzione.find(x=>String(x.id)===b.dataset.vaReceipt);if(v)printReturned(v,(v.voci||[]).map(x=>({articolo:x.articolo,taglia:x.taglia,q:x.q,condizione:x.condizione})));
  });
  p.querySelectorAll('[data-va-sheet]').forEach(b=>b.onclick=()=>{$('#vaPersonPrint').value=b.dataset.vaSheet;$('#vaPrintPerson')?.click()});
- p.querySelectorAll('[data-va-swap]').forEach(b=>b.onclick=()=>{
+ p.querySelectorAll('[data-va-swap]').forEach(b=>b.onclick=async()=>{
   const items=assegnazioni.filter(a=>(a.badge||a.nominativo)===b.dataset.vaSwap&&a.quantita_consegnata>a.quantita_restituita);
   const a=items[0];if(!a)return;
-  toast('Per sostituire un capo registra prima la restituzione, poi la nuova consegna. Saranno conservati entrambi i movimenti.');
-  const badge=$('#vaBadge'),name=$('#vaNome');if(badge)badge.value=a.badge||'';if(name)name.value=a.nominativo;
+  const options=items.map((x,i)=>(i+1)+'. '+x.articolo+' '+x.taglia+' (in dotazione '+(x.quantita_consegnata-x.quantita_restituita)+')').join('\n');
+  const pick=window.prompt('Quale capo vuoi sostituire? Inserisci il numero:\n'+options,'1');
+  if(pick===null)return;
+  const selected=items[Number(pick)-1];if(!selected){toast('Selezione non valida',true);return}
+  const n=window.prompt('Quanti capi vuoi sostituire?','1');if(n===null)return;
+  const qty=Number(n);if(!Number.isInteger(qty)||qty<1||qty>selected.quantita_consegnata-selected.quantita_restituita){toast('Quantità non valida',true);return}
+  const newSize=window.prompt('Nuova taglia per '+selected.articolo,selected.taglia);if(newSize===null)return;
+  if(!newSize.trim()){toast('Inserisci la nuova taglia',true);return}
+  const oldCond=window.prompt('Condizione del capo restituito (Usato idoneo / Da lavare / Da riparare / Da dismettere)','Da lavare');
+  if(oldCond===null)return;
+  if(!['Usato idoneo','Da lavare','Da riparare','Da dismettere'].includes(oldCond)){toast('Condizione non valida',true);return}
+  if(!window.confirm('Confermi il cambio di '+qty+' capo/i '+selected.articolo+' da taglia '+selected.taglia+' a '+newSize+'?'))return;
+  b.disabled=true;
+  try{await safe(sb.rpc('mag_vestiario_sostituisci',{p_id:selected.id,p_quantita:qty,p_condizione_restituzione:oldCond,p_taglia_nuova:newSize.trim(),p_condizione_nuova:'Nuovo'}));toast('Sostituzione registrata: giacenze e dotazione aggiornate');await renderVestiario()}catch(e){toast(e.message||'Sostituzione non riuscita',true);b.disabled=false}
  });
  if($('#vaPrintGeneral'))$('#vaPrintGeneral').onclick=()=>{
   const rows=assegnazioni.filter(a=>a.quantita_consegnata>a.quantita_restituita).map(a=>[a.nominativo,a.badge,a.articolo,a.taglia,a.quantita_consegnata-a.quantita_restituita,a.origine_censimento?'Censimento':'Consegna']);
